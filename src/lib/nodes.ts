@@ -40,17 +40,30 @@ export class Decimal extends BaseNode<"DECIMAL"> {
   }
 
   toString(): string {
-    const s = this.whole.toString();
-    const exp = Number(this.exponent);
-    if (exp === 0) return s;
-    if (exp > 0) return s + "0".repeat(exp);
-
-    const absExp = -exp;
-    if (s.length <= absExp) {
-      return `0.${s.padStart(absExp, "0")}`;
+    let s = this.whole.toString();
+    const isNegative = s.startsWith("-");
+    if (isNegative) {
+      s = s.slice(1);
     }
-    const idx = s.length - absExp;
-    return `${s.slice(0, idx)}.${s.slice(idx)}`;
+
+    const exp = Number(this.exponent);
+    let result: string;
+
+    if (exp === 0) {
+      result = s;
+    } else if (exp > 0) {
+      result = s + "0".repeat(exp);
+    } else {
+      const absExp = -exp;
+      if (s.length <= absExp) {
+        result = `0.${s.padStart(absExp, "0")}`;
+      } else {
+        const idx = s.length - absExp;
+        result = `${s.slice(0, idx)}.${s.slice(idx)}`;
+      }
+    }
+
+    return isNegative ? `-${result}` : result;
   }
 }
 
@@ -145,10 +158,10 @@ export class Power extends BaseNode<"POWER"> {
   }
 }
 
+export type NumericalNode = Integer | Decimal | Fraction;
+
 export type TreeNode =
-  | Integer
-  | Decimal
-  | Fraction
+  | NumericalNode
   | Add
   | Subtract
   | Multiply
