@@ -2,7 +2,7 @@ import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
 import type { TreeNode } from "./nodes";
-import { Add, Decimal, Integer, Multiply, Subtract } from "./nodes";
+import { Add, Decimal, Divide, Integer, Multiply, Subtract } from "./nodes";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -11,12 +11,9 @@ export class ParserError extends AlgebraError {
 }
 
 export class Parser {
-  private readonly tokens: Token[];
   private current: number = 0;
 
-  constructor(tokens: Token[]) {
-    this.tokens = tokens;
-  }
+  constructor(readonly tokens: Token[]) {}
 
   private peek(): Token | undefined {
     return this.tokens[this.current];
@@ -34,17 +31,13 @@ export class Parser {
     return token;
   }
 
-  private isAtEnd(): boolean {
-    return this.current >= this.tokens.length;
-  }
-
   public parse(): TreeNode {
     if (this.tokens.length === 0) {
       throw new ParserError("Empty expression", 0);
     }
     const node = this.parseExpression();
-    if (!this.isAtEnd()) {
-      const token = this.peek()!;
+    const token = this.peek();
+    if (token) {
       throw new ParserError(`Unexpected token '${token.type}'`, token.pos);
     }
     return node;
@@ -110,10 +103,8 @@ export class Parser {
   private parseImplicitMul(): TreeNode {
     let left = this.parseFactor();
 
-    while (!this.isAtEnd()) {
-      const token = this.peek();
-      if (!token) break;
-
+    let token;
+    while ((token = this.peek())) {
       if (token.type === "NUMBER" || token.type === "LPAREN") {
         const right = this.parseFactor();
         left = new Multiply(left, right);
@@ -128,13 +119,19 @@ export class Parser {
   private parseTerm(): TreeNode {
     let left = this.parseImplicitMul();
 
-    while (!this.isAtEnd()) {
-      const token = this.peek();
-      if (token?.type !== "MUL") break;
-
-      this.consume();
-      const right = this.parseImplicitMul();
-      left = new Multiply(left, right);
+    let token;
+    while ((token = this.peek())) {
+      if (token.type === "MUL") {
+        this.consume();
+        const right = this.parseImplicitMul();
+        left = new Multiply(left, right);
+      } else if (token.type === "DIV") {
+        this.consume();
+        const right = this.parseImplicitMul();
+        left = new Divide(left, right);
+      } else {
+        break;
+      }
     }
 
     return left;
@@ -143,10 +140,8 @@ export class Parser {
   private parseExpression(): TreeNode {
     let left = this.parseTerm();
 
-    while (!this.isAtEnd()) {
-      const token = this.peek();
-      if (!token) break;
-
+    let token;
+    while ((token = this.peek())) {
       if (token.type === "PLUS") {
         this.consume();
         const right = this.parseTerm();

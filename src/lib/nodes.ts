@@ -1,11 +1,16 @@
-type NodeType = "INTEGER" | "DECIMAL" | "ADD" | "SUBTRACT" | "MULTIPLY";
+import { gcd } from "#math/gcd";
+
+type NodeType =
+  | "INTEGER"
+  | "DECIMAL"
+  | "FRACTION"
+  | "ADD"
+  | "SUBTRACT"
+  | "MULTIPLY"
+  | "DIVIDE";
 
 abstract class BaseNode<T extends NodeType = NodeType> {
-  readonly type: T;
-
-  constructor(type: T) {
-    this.type = type;
-  }
+  constructor(readonly type: T) {}
 
   abstract toString(): string;
 }
@@ -24,13 +29,11 @@ export class Integer extends BaseNode<"INTEGER"> {
 }
 
 export class Decimal extends BaseNode<"DECIMAL"> {
-  readonly whole: bigint;
-  readonly exponent: bigint;
-
-  constructor(whole: bigint, exponent: bigint) {
+  constructor(
+    readonly whole: bigint,
+    readonly exponent: bigint,
+  ) {
     super("DECIMAL");
-    this.whole = whole;
-    this.exponent = exponent;
   }
 
   toString(): string {
@@ -45,6 +48,32 @@ export class Decimal extends BaseNode<"DECIMAL"> {
     }
     const idx = s.length - absExp;
     return `${s.slice(0, idx)}.${s.slice(idx)}`;
+  }
+}
+
+export class Fraction extends BaseNode<"FRACTION"> {
+  readonly numerator: bigint;
+  readonly denominator: bigint;
+
+  constructor(numerator: bigint, denominator: bigint) {
+    super("FRACTION");
+    if (denominator === 0n) throw new Error("Division by zero");
+
+    let n = numerator;
+    let d = denominator;
+    if (d < 0n) {
+      n = -n;
+      d = -d;
+    }
+
+    const g = gcd(n < 0n ? -n : n, d);
+    this.numerator = n / g;
+    this.denominator = d / g;
+  }
+
+  toString(): string {
+    if (this.denominator === 1n) return this.numerator.toString();
+    return `${this.numerator}/${this.denominator}`;
   }
 }
 
@@ -87,4 +116,24 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
   }
 }
 
-export type TreeNode = Integer | Decimal | Add | Subtract | Multiply;
+export class Divide extends BaseNode<"DIVIDE"> {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
+    super("DIVIDE");
+  }
+
+  toString(): string {
+    return `(${this.left.toString()} / ${this.right.toString()})`;
+  }
+}
+
+export type TreeNode =
+  | Integer
+  | Decimal
+  | Fraction
+  | Add
+  | Subtract
+  | Multiply
+  | Divide;

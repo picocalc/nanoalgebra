@@ -9,7 +9,7 @@ function evaluate(expression: string, options?: LexerOptions): string {
   const tokens = tokenize(expression, options);
   const tree = new Parser(tokens).parse();
   const evaluator = new Evaluator();
-  return evaluator.toDecimal(evaluator.evaluate(tree)).toString();
+  return evaluator.evaluate(tree).toString();
 }
 
 export { evaluate, tokenize, Parser, Evaluator };

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
+import { EvaluatorError } from "#lib/evaluator";
 import { evaluate } from "#src";
 
 describe("evaluate", () => {
@@ -54,6 +55,7 @@ describe("evaluate", () => {
       expect(evaluate("2 + 2(1 + 1)")).toBe("6");
       expect(evaluate("8 - 2(1 + 2)")).toBe("2");
       expect(evaluate("2 * 2(1 + 2)")).toBe("12");
+      expect(evaluate("6 / 2(1 + 2)")).toBe("1");
     });
   });
 
@@ -92,6 +94,12 @@ describe("evaluate", () => {
     expect(evaluate(".01")).toBe("0.01");
   });
 
+  it("handles a decimal with implicit decimal part", () => {
+    expect(evaluate("1.")).toBe("1");
+    expect(evaluate("0.")).toBe("0");
+    expect(evaluate("10.")).toBe("10");
+  });
+
   it("handles addition of 2 decimals", () => {
     expect(evaluate("0.1 + 0.1")).toBe("0.2");
     expect(evaluate("0.1 + 0.2")).toBe("0.3");
@@ -118,5 +126,29 @@ describe("evaluate", () => {
     expect(evaluate("1e-2")).toBe("0.01");
     expect(evaluate("1.2e3")).toBe("1200");
     expect(evaluate("1.2e-3")).toBe("0.0012");
+  });
+
+  it("handles double negatives", () => {
+    expect(evaluate("-(1/-1)")).toBe("1");
+    expect(evaluate("0 - (1/-1)")).toBe("1");
+    expect(evaluate("-1 - (2/-1)")).toBe("1");
+  });
+
+  it("handles fractions", () => {
+    expect(evaluate("1/2")).toBe("1/2");
+    expect(evaluate("1/3")).toBe("1/3");
+    expect(evaluate("1/2 + 1/3")).toBe("5/6");
+  });
+
+  it("throws for division by 0", () => {
+    expect(() => evaluate("1/0")).toThrow(EvaluatorError);
+    expect(() => evaluate("0/0")).toThrow(EvaluatorError);
+    expect(() => evaluate("0 * 1/0")).toThrow(EvaluatorError);
+    expect(() => evaluate("1/0 * 0")).toThrow(EvaluatorError);
+  });
+
+  it("does not throw when not dividing by 0", () => {
+    expect(evaluate("0/1")).toBe("0");
+    expect(evaluate("0/2")).toBe("0");
   });
 });

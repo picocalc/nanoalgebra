@@ -12,7 +12,8 @@
   "type": "module",
   "imports": {
     "#src": "./src/index.ts",
-    "#lib/*": "./src/lib/*.ts"
+    "#lib/*": "./src/lib/*.ts",
+    "#math/*": "./src/math/*.ts"
   },
   "exports": {
     ".": "./dist/index.mjs",
