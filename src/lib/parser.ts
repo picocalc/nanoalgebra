@@ -2,7 +2,15 @@ import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
 import type { TreeNode } from "./nodes";
-import { Add, Decimal, Divide, Integer, Multiply, Subtract } from "./nodes";
+import {
+  Add,
+  Decimal,
+  Divide,
+  Integer,
+  Multiply,
+  Power,
+  Subtract,
+} from "./nodes";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -19,14 +27,7 @@ export class Parser {
     return this.tokens[this.current];
   }
 
-  private consume(): Token {
-    const token = this.peek();
-    if (!token) {
-      throw new ParserError(
-        "Unexpected end of expression",
-        this.tokens.at(-1)?.pos ?? 0,
-      );
-    }
+  private consume(token: Token): Token {
     this.current++;
     return token;
   }
@@ -53,19 +54,8 @@ export class Parser {
       );
     }
 
-    if (token.type === "PLUS") {
-      this.consume();
-      return this.parseFactor();
-    }
-
-    if (token.type === "MINUS") {
-      this.consume();
-      const operand = this.parseFactor();
-      return new Subtract(new Integer(0), operand);
-    }
-
     if (token.type === "NUMBER") {
-      this.consume();
+      this.consume(token);
 
       if (token.fraction !== undefined || token.exponent !== undefined) {
         const wholePart = token.whole === "" ? "0" : token.whole;
@@ -84,7 +74,7 @@ export class Parser {
     }
 
     if (token.type === "LPAREN") {
-      this.consume();
+      this.consume(token);
       const node = this.parseExpression();
       const nextToken = this.peek();
       if (nextToken?.type !== "RPAREN") {
@@ -93,20 +83,33 @@ export class Parser {
           nextToken?.pos ?? this.tokens.at(-1)?.pos ?? 0,
         );
       }
-      this.consume();
+      this.consume(token);
       return node;
     }
 
     throw new ParserError(`Unexpected token type '${token.type}'`, token.pos);
   }
 
-  private parseImplicitMul(): TreeNode {
+  private parseExponent(): TreeNode {
     let left = this.parseFactor();
+
+    const token = this.peek();
+    if (token?.type === "POW") {
+      this.consume(token);
+      const right = this.parseUnary();
+      left = new Power(left, right);
+    }
+
+    return left;
+  }
+
+  private parseImplicitMul(): TreeNode {
+    let left = this.parseExponent();
 
     let token;
     while ((token = this.peek())) {
       if (token.type === "NUMBER" || token.type === "LPAREN") {
-        const right = this.parseFactor();
+        const right = this.parseExponent();
         left = new Multiply(left, right);
       } else {
         break;
@@ -116,18 +119,35 @@ export class Parser {
     return left;
   }
 
+  private parseUnary(): TreeNode {
+    const token = this.peek();
+
+    if (token?.type === "PLUS") {
+      this.consume(token);
+      return this.parseUnary();
+    }
+
+    if (token?.type === "MINUS") {
+      this.consume(token);
+      const operand = this.parseUnary();
+      return new Subtract(new Integer(0), operand);
+    }
+
+    return this.parseImplicitMul();
+  }
+
   private parseTerm(): TreeNode {
-    let left = this.parseImplicitMul();
+    let left = this.parseUnary();
 
     let token;
     while ((token = this.peek())) {
       if (token.type === "MUL") {
-        this.consume();
-        const right = this.parseImplicitMul();
+        this.consume(token);
+        const right = this.parseUnary();
         left = new Multiply(left, right);
       } else if (token.type === "DIV") {
-        this.consume();
-        const right = this.parseImplicitMul();
+        this.consume(token);
+        const right = this.parseUnary();
         left = new Divide(left, right);
       } else {
         break;
@@ -143,11 +163,11 @@ export class Parser {
     let token;
     while ((token = this.peek())) {
       if (token.type === "PLUS") {
-        this.consume();
+        this.consume(token);
         const right = this.parseTerm();
         left = new Add(left, right);
       } else if (token.type === "MINUS") {
-        this.consume();
+        this.consume(token);
         const right = this.parseTerm();
         left = new Subtract(left, right);
       } else {

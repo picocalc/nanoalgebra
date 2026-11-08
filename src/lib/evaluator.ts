@@ -88,9 +88,69 @@ export class Evaluator {
         return this.normalizeFraction(n, d);
       }
 
+      case "POWER": {
+        const left = this.evaluate(node.left);
+        const right = this.evaluate(node.right);
+
+        const baseInt = this.tryGetIntegerValue(left);
+        const expInt = this.tryGetIntegerValue(right);
+
+        if (baseInt === 1n || expInt === 0n) {
+          return new Integer(1);
+        }
+
+        if (baseInt === 0n) {
+          if (
+            (right.type === "FRACTION" && right.numerator < 0n) ||
+            (expInt !== null && expInt < 0n)
+          ) {
+            throw new EvaluatorError("Division by zero in power expression");
+          }
+          return new Integer(0);
+        }
+
+        if (expInt === null) {
+          throw new EvaluatorError("Non-integer exponents are not supported");
+        }
+
+        return this.evaluatePower(left, expInt);
+      }
+
       default:
         throw new EvaluatorError("Unknown node type during evaluation");
     }
+  }
+
+  private tryGetIntegerValue(node: NumericalType): bigint | null {
+    if (node.type === "INTEGER") return node.value;
+    if (node.type === "DECIMAL") {
+      if (node.exponent >= 0n) {
+        return node.whole * 10n ** node.exponent;
+      }
+      return null;
+    }
+    if (node.denominator === 1n) return node.numerator;
+    return null;
+  }
+
+  private evaluatePower(base: NumericalType, exp: bigint): NumericalType {
+    if (exp > 0n) {
+      if (base.type === "INTEGER") {
+        return new Integer(base.value ** exp);
+      }
+      if (base.type === "DECIMAL") {
+        const coeff = base.whole ** exp;
+        const exponent = base.exponent * exp;
+        return this.normalizeDecimal(coeff, exponent);
+      }
+      return this.normalizeFraction(
+        base.numerator ** exp,
+        base.denominator ** exp,
+      );
+    }
+
+    const f = this.toFraction(base);
+    return this.normalizeFraction(f.denominator ** -exp, f.numerator ** -exp);
   }
 
   public toDecimal(node: Decimal | Integer): Decimal {

@@ -1,5 +1,7 @@
 import { gcd } from "#math/gcd";
 
+import { EvaluatorError } from "./evaluator";
+
 type NodeType =
   | "INTEGER"
   | "DECIMAL"
@@ -7,7 +9,8 @@ type NodeType =
   | "ADD"
   | "SUBTRACT"
   | "MULTIPLY"
-  | "DIVIDE";
+  | "DIVIDE"
+  | "POWER";
 
 abstract class BaseNode<T extends NodeType = NodeType> {
   constructor(readonly type: T) {}
@@ -57,7 +60,7 @@ export class Fraction extends BaseNode<"FRACTION"> {
 
   constructor(numerator: bigint, denominator: bigint) {
     super("FRACTION");
-    if (denominator === 0n) throw new Error("Division by zero");
+    if (denominator === 0n) throw new EvaluatorError("Division by zero");
 
     let n = numerator;
     let d = denominator;
@@ -129,6 +132,19 @@ export class Divide extends BaseNode<"DIVIDE"> {
   }
 }
 
+export class Power extends BaseNode<"POWER"> {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
+    super("POWER");
+  }
+
+  toString(): string {
+    return `(${this.left.toString()} ^ ${this.right.toString()})`;
+  }
+}
+
 export type TreeNode =
   | Integer
   | Decimal
@@ -136,4 +152,5 @@ export type TreeNode =
   | Add
   | Subtract
   | Multiply
-  | Divide;
+  | Divide
+  | Power;
