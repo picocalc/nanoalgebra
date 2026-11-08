@@ -86,6 +86,50 @@ export class Evaluator {
         return this.normalizeFraction(n, d);
       }
 
+      case "MOD": {
+        const left = this.evaluate(node.left);
+        const right = this.evaluate(node.right);
+
+        if (left.type === "FRACTION" || right.type === "FRACTION") {
+          const a = Evaluator.toFraction(left);
+          const b = Evaluator.toFraction(right);
+
+          const q = a.denominator * b.denominator;
+
+          const n1 = a.numerator * (q / a.denominator);
+          const n2 = b.numerator * (q / b.denominator);
+
+          const n = ((n1 % n2) + n2) % n2;
+
+          return this.normalizeFraction(n, q);
+        }
+
+        const f1 = Evaluator.toDecimal(left);
+        const f2 = Evaluator.toDecimal(right);
+
+        const e1 = f1.exponent;
+        const e2 = f2.exponent;
+
+        let c1 = f1.whole;
+        let c2 = f2.whole;
+
+        if (c2 === 0n) {
+          throw new EvaluatorError("Modulo by zero");
+        }
+
+        const minExp = e1 < e2 ? e1 : e2;
+
+        if (e1 > minExp) {
+          c1 *= 10n ** (e1 - minExp);
+        }
+        if (e2 > minExp) {
+          c2 *= 10n ** (e2 - minExp);
+        }
+
+        const c = ((c1 % c2) + c2) % c2;
+        return Evaluator.normalizeDecimal(c, minExp);
+      }
+
       case "POWER": {
         const left = this.evaluate(node.left);
         const right = this.evaluate(node.right);

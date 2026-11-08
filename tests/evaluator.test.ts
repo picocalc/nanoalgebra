@@ -56,6 +56,7 @@ describe("evaluate", () => {
       expect(evaluate("8 - 2(1 + 2)").toString()).toBe("2");
       expect(evaluate("2 * 2(1 + 2)").toString()).toBe("12");
       expect(evaluate("6 / 2(1 + 2)").toString()).toBe("1");
+      expect(evaluate("1 + 5 % 3").toString()).toBe("3");
     });
 
     it("handles order of exponentiation", () => {
@@ -180,6 +181,7 @@ describe("evaluate", () => {
       expect(() => evaluate("(1/0)^-1")).toThrow(EvaluatorError);
       expect(() => evaluate("0^-1")).toThrow(EvaluatorError);
       expect(() => evaluate("0^(-2/3)")).toThrow(EvaluatorError);
+      expect(() => evaluate("1 % 0")).toThrow(EvaluatorError);
     });
 
     it("handles division of 0", () => {
@@ -192,6 +194,26 @@ describe("evaluate", () => {
       expect(evaluate("-(1/-1)").toString()).toBe("1");
       expect(evaluate("0 - (1/-1)").toString()).toBe("1");
       expect(evaluate("-1 - (2/-1)").toString()).toBe("1");
+    });
+  });
+
+  describe("modulo", () => {
+    it("handles simple modulo", () => {
+      expect(evaluate("5 % 3").toString()).toBe("2");
+      expect(evaluate("10 % 3").toString()).toBe("1");
+      expect(evaluate("-25 % 7").toString()).toBe("3");
+      expect(evaluate("-25 % -7").toString()).toBe("-4");
+      expect(evaluate("25 % -7").toString()).toBe("-3");
+    });
+
+    it("handles modulo with decimals", () => {
+      expect(evaluate("2.5 % 2").toString()).toBe("0.5");
+      expect(evaluate("9.5 % 2.5").toString()).toBe("2");
+      expect(evaluate("9 % 2.5").toString()).toBe("1.5");
+    });
+
+    it("handles modulo with fractions", () => {
+      expect(evaluate("(5/6) % (2/7)").toString()).toBe("11/42");
     });
   });
 

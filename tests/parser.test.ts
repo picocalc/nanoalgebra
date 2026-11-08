@@ -20,6 +20,10 @@ describe("parse", () => {
     expect(parse("1 / 1").toString()).toBe("(1 / 1)");
   });
 
+  it("parses module division", () => {
+    expect(parse("1 % 1").toString()).toBe("(1 % 1)");
+  });
+
   it("parses exponentiationF", () => {
     expect(parse("1 ^ 1").toString()).toBe("(1 ^ 1)");
   });

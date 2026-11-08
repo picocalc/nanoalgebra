@@ -7,6 +7,7 @@ import {
   Decimal,
   Divide,
   Integer,
+  Modulo,
   Multiply,
   Power,
   Subtract,
@@ -149,6 +150,10 @@ export class Parser {
         this.consume(token);
         const right = this.parseUnary();
         left = new Divide(left, right);
+      } else if (token.type === "MOD") {
+        this.consume(token);
+        const right = this.parseUnary();
+        left = new Modulo(left, right);
       } else {
         break;
       }

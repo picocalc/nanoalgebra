@@ -10,6 +10,7 @@ type NodeType =
   | "SUBTRACT"
   | "MULTIPLY"
   | "DIVIDE"
+  | "MOD"
   | "POWER";
 
 abstract class BaseNode<T extends NodeType = NodeType> {
@@ -145,6 +146,21 @@ export class Divide extends BaseNode<"DIVIDE"> {
   }
 }
 
+export class Modulo extends BaseNode<"MOD"> {
+  readonly left: TreeNode;
+  readonly right: TreeNode;
+
+  constructor(left: TreeNode, right: TreeNode) {
+    super("MOD");
+    this.left = left;
+    this.right = right;
+  }
+
+  toString(): string {
+    return `(${this.left.toString()} % ${this.right.toString()})`;
+  }
+}
+
 export class Power extends BaseNode<"POWER"> {
   constructor(
     readonly left: TreeNode,
@@ -166,4 +182,5 @@ export type TreeNode =
   | Subtract
   | Multiply
   | Divide
+  | Modulo
   | Power;
