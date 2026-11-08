@@ -1,7 +1,7 @@
 import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
-import { Add, Constant, Subtract, TreeNode } from "./nodes";
+import { Add, Constant, Multiply, Subtract, TreeNode } from "./nodes";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -41,35 +41,76 @@ export class Parser {
     if (this.tokens.length === 0) {
       throw new ParserError("Empty expression", 0);
     }
-    return this.parseExpression();
+    const node = this.parseExpression();
+    if (!this.isAtEnd()) {
+      const token = this.peek()!;
+      throw new ParserError(`Unexpected token '${token.type}'`, token.pos);
+    }
+    return node;
   }
 
-  private parsePrimary(): TreeNode {
-    const token = this.consume();
+  private parseFactor(): TreeNode {
+    const token = this.peek();
+
+    if (!token) {
+      throw new ParserError(
+        "Unexpected end of expression",
+        this.tokens.at(-1)?.pos ?? 0,
+      );
+    }
+
+    if (token.type === "PLUS") {
+      this.consume();
+      return this.parseFactor();
+    }
+
+    if (token.type === "MINUS") {
+      this.consume();
+      const operand = this.parseFactor();
+      return new Subtract(new Constant(0), operand);
+    }
 
     if (token.type === "NUMBER") {
-      const numToken = token;
-      return new Constant(numToken.whole);
+      this.consume();
+      return new Constant(token.whole);
     }
 
     throw new ParserError(`Unexpected token type '${token.type}'`, token.pos);
   }
 
-  private parseExpression(): TreeNode {
-    let left: TreeNode = this.parsePrimary();
+  private parseTerm(): TreeNode {
+    let left: TreeNode = this.parseFactor();
 
     while (!this.isAtEnd()) {
       const token = this.peek();
+      if (!token) break;
 
+      if (token.type === "MUL") {
+        this.consume();
+        const right = this.parseFactor();
+        left = new Multiply(left, right);
+      } else {
+        break;
+      }
+    }
+
+    return left;
+  }
+
+  private parseExpression(): TreeNode {
+    let left: TreeNode = this.parseTerm();
+
+    while (!this.isAtEnd()) {
+      const token = this.peek();
       if (!token) break;
 
       if (token.type === "PLUS") {
         this.consume();
-        const right = this.parsePrimary();
+        const right = this.parseTerm();
         left = new Add(left, right);
       } else if (token.type === "MINUS") {
         this.consume();
-        const right = this.parsePrimary();
+        const right = this.parseTerm();
         left = new Subtract(left, right);
       } else {
         break;

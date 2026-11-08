@@ -6,7 +6,7 @@ export { AlgebraError } from "#lib/errors";
 
 export { tokenize } from "#lib/lexer";
 
-function evaluate(expression: string, options?: LexerOptions) {
+function evaluate(expression: string, options?: LexerOptions): string {
   return new Parser(tokenize(expression, options))
     .parse()
     .evaluate()

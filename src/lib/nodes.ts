@@ -1,4 +1,4 @@
-export type NodeType = "CONSTANT" | "ADD" | "SUBTRACT";
+export type NodeType = "CONSTANT" | "ADD" | "SUBTRACT" | "MULTIPLY";
 
 export abstract class TreeNode<T extends NodeType = NodeType> {
   readonly type: T;
@@ -38,7 +38,7 @@ export class Add extends TreeNode<"ADD"> {
     this.right = right;
   }
 
-  evaluate(env: Record<string, bigint>): bigint {
+  evaluate(env?: Record<string, bigint>): bigint {
     return this.left.evaluate(env) + this.right.evaluate(env);
   }
 
@@ -57,11 +57,30 @@ export class Subtract extends TreeNode<"SUBTRACT"> {
     this.right = right;
   }
 
-  evaluate(env: Record<string, bigint>): bigint {
+  evaluate(env?: Record<string, bigint>): bigint {
     return this.left.evaluate(env) - this.right.evaluate(env);
   }
 
   toString(): string {
     return `(${this.left.toString()} - ${this.right.toString()})`;
+  }
+}
+
+export class Multiply extends TreeNode<"MULTIPLY"> {
+  readonly left: TreeNode;
+  readonly right: TreeNode;
+
+  constructor(left: TreeNode, right: TreeNode) {
+    super("MULTIPLY");
+    this.left = left;
+    this.right = right;
+  }
+
+  evaluate(env?: Record<string, bigint>): bigint {
+    return this.left.evaluate(env) * this.right.evaluate(env);
+  }
+
+  toString(): string {
+    return `(${this.left.toString()} * ${this.right.toString()})`;
   }
 }
