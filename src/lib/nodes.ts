@@ -184,7 +184,7 @@ export class Power extends BaseNode<"POWER"> {
 
   toString(): string {
     const { left, right } = this;
-    if (left.type === "SYMBOL") {
+    if (left.type === "SYMBOL" || right.type === "SYMBOL") {
       return `${left.toString()}^${right.toString()}`;
     }
     return `(${left.toString()} ^ ${right.toString()})`;
@@ -199,6 +199,14 @@ export class SymbolNode extends BaseNode<"SYMBOL"> {
   toString(): string {
     return this.name;
   }
+}
+
+export function isNumerical(node: TreeNode): node is NumericalNode {
+  return (
+    node.type === "INTEGER" ||
+    node.type === "DECIMAL" ||
+    node.type === "FRACTION"
+  );
 }
 
 export type NumericalNode = Integer | Decimal | Fraction;

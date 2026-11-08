@@ -359,6 +359,19 @@ describe("evaluate", () => {
       expect(evaluate("pi - pi + e").toString()).toBe("e");
       expect(evaluate("e - e + pi").toString()).toBe("pi");
 
+      expect(evaluate("pi + e").toString()).toBe("(pi + e)");
+      expect(evaluate("e + pi").toString()).toBe("(e + pi)");
+      expect(evaluate("pi - e").toString()).toBe("(pi - e)");
+      expect(evaluate("e - pi").toString()).toBe("(e - pi)");
+      expect(evaluate("pi + 2").toString()).toBe("(pi + 2)");
+      expect(evaluate("e + 2").toString()).toBe("(e + 2)");
+      expect(evaluate("pi - 2").toString()).toBe("(pi - 2)");
+      expect(evaluate("e - 2").toString()).toBe("(e - 2)");
+      expect(evaluate("2 + e").toString()).toBe("(2 + e)");
+      expect(evaluate("2 + pi").toString()).toBe("(2 + pi)");
+      expect(evaluate("2 - e").toString()).toBe("(2 - e)");
+      expect(evaluate("2 - pi").toString()).toBe("(2 - pi)");
+
       expect(evaluate("0pi + e").toString()).toBe("e");
       expect(evaluate("0e + pi").toString()).toBe("pi");
 
@@ -375,6 +388,9 @@ describe("evaluate", () => {
       expect(evaluate("0 * e").toString()).toBe("0");
       expect(evaluate("pi * 0").toString()).toBe("0");
       expect(evaluate("e * 0").toString()).toBe("0");
+
+      expect(evaluate("pi * e").toString()).toBe("(pi * e)");
+      expect(evaluate("e * pi").toString()).toBe("(e * pi)");
 
       expect(evaluate("pi * pi^-1").toString()).toBe("1");
       expect(evaluate("pi^-1 * pi").toString()).toBe("1");
@@ -408,6 +424,9 @@ describe("evaluate", () => {
       expect(evaluate("pi/2pi").toString()).toBe("1/2");
       expect(evaluate("e/2e").toString()).toBe("1/2");
 
+      expect(evaluate("pi / e").toString()).toBe("(pi / e)");
+      expect(evaluate("e / pi").toString()).toBe("(e / pi)");
+
       expect(evaluate("2pi^2 / 2").toString()).toBe("pi^2");
       expect(evaluate("pi^2 / pi").toString()).toBe("pi");
       expect(evaluate("pi^3 / pi").toString()).toBe("pi^2");
@@ -420,6 +439,11 @@ describe("evaluate", () => {
       expect(evaluate("e ^ 0").toString()).toBe("1");
       expect(evaluate("pi ^ 1").toString()).toBe("pi");
       expect(evaluate("e ^ 1").toString()).toBe("e");
+
+      expect(evaluate("pi ^ e").toString()).toBe("pi^e");
+      expect(evaluate("e ^ pi").toString()).toBe("e^pi");
+      expect(evaluate("2 ^ e").toString()).toBe("2^e");
+      expect(evaluate("2 ^ pi").toString()).toBe("2^pi");
 
       expect(evaluate("0 + pi^2").toString()).toBe("pi^2");
       expect(evaluate("pi^2 + 0").toString()).toBe("pi^2");

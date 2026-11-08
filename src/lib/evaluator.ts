@@ -6,8 +6,10 @@ import {
   Divide,
   Fraction,
   Integer,
+  isNumerical,
   Multiply,
   Power,
+  Subtract,
 } from "./nodes";
 
 export class EvaluatorError extends AlgebraError {
@@ -32,75 +34,56 @@ export class Evaluator {
         const left = this.evaluate(node.left);
         const right = this.evaluate(node.right);
 
-        if (this.isNumerical(left) && this.isNumerical(right)) {
+        if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericBinary(left, right, node.type);
         }
 
         const combined = this.tryCombineTerms(left, right, node.type);
-        if (combined !== null) {
-          return combined;
-        }
+        if (combined !== null) return combined;
 
         if (this.isZero(left))
           return node.type === "ADD" ? right : this.negate(right);
         if (this.isZero(right)) return left;
 
-        return new Add(left, right);
+        return node.type === "ADD"
+          ? new Add(left, right)
+          : new Subtract(left, right);
       }
 
       case "MULTIPLY": {
         const left = this.evaluate(node.left);
         const right = this.evaluate(node.right);
 
-        if (this.isZero(left) || this.isZero(right)) {
-          return new Integer(0);
-        }
-
+        if (this.isZero(left) || this.isZero(right)) return new Integer(0);
         if (this.isOne(left)) return right;
         if (this.isOne(right)) return left;
 
-        if (this.isNumerical(left) && this.isNumerical(right)) {
+        if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericMultiply(left, right);
         }
 
         const simplified = this.tryMultiplySymbolic(left, right);
-        if (simplified !== null) {
-          return simplified;
-        }
-
-        return new Multiply(left, right);
+        return simplified ?? new Multiply(left, right);
       }
 
       case "DIVIDE": {
         const left = this.evaluate(node.left);
         const right = this.evaluate(node.right);
 
-        if (this.isZero(right)) {
-          throw new EvaluatorError("Division by zero");
-        }
-        if (this.isZero(left)) {
-          return new Integer(0);
-        }
-        if (this.isOne(right)) {
-          return left;
-        }
+        if (this.isZero(right)) throw new EvaluatorError("Division by zero");
+        if (this.isZero(left)) return new Integer(0);
+        if (this.isOne(right)) return left;
 
-        if (this.isNumerical(left) && this.isNumerical(right)) {
+        if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericDivide(left, right);
         }
 
-        const simplified = this.tryDivideSymbolic(left, right);
-        if (simplified !== null) {
-          return simplified;
-        }
-
-        return new Divide(left, right);
+        return this.tryDivideSymbolic(left, right) ?? new Divide(left, right);
       }
 
       case "MOD": {
         const left = this.evaluate(node.left);
         const right = this.evaluate(node.right);
-
         return this.evaluateNumericMod(left, right);
       }
 
@@ -111,12 +94,9 @@ export class Evaluator {
         const baseInt = this.tryGetIntegerValue(left);
         const expInt = this.tryGetIntegerValue(right);
 
-        if (expInt === 0n) {
-          return new Integer(1);
-        }
-        if (baseInt === 1n) {
-          return new Integer(1);
-        }
+        if (expInt === 0n) return new Integer(1);
+        if (baseInt === 1n) return new Integer(1);
+
         if (baseInt === 0n) {
           if (
             (right.type === "FRACTION" && right.numerator < 0n) ||
@@ -126,24 +106,11 @@ export class Evaluator {
           }
           return new Integer(0);
         }
-        if (expInt === 1n) {
-          return left;
-        }
 
-        if (this.isNumerical(left) && expInt !== null) {
+        if (expInt === 1n) return left;
+
+        if (isNumerical(left) && expInt !== null) {
           return this.evaluatePower(left, expInt);
-        }
-
-        if (left.type === "INTEGER" && left.value === 0n) {
-          const rightVal = Evaluator.asDecimal(right);
-          const rInt = this.tryGetIntegerValue(rightVal);
-          if (rInt !== null && rInt < 0n) {
-            throw new EvaluatorError("Division by zero in power expression");
-          }
-          return new Integer(0);
-        }
-        if (left.type === "INTEGER" && left.value === 1n) {
-          return new Integer(1);
         }
 
         if (left.type === "SYMBOL" && expInt !== null && expInt > 0n) {
@@ -155,14 +122,6 @@ export class Evaluator {
     }
   }
 
-  private isNumerical(node: TreeNode): node is NumericalNode {
-    return (
-      node.type === "INTEGER" ||
-      node.type === "DECIMAL" ||
-      node.type === "FRACTION"
-    );
-  }
-
   private isZero(node: TreeNode): boolean {
     return this.tryGetIntegerValue(node) === 0n;
   }
@@ -172,7 +131,7 @@ export class Evaluator {
   }
 
   private negate(node: TreeNode): TreeNode {
-    if (this.isNumerical(node)) {
+    if (isNumerical(node)) {
       const f = Evaluator.toFraction(node);
       return this.normalizeFraction(-f.numerator, f.denominator);
     }
@@ -183,25 +142,25 @@ export class Evaluator {
     coeff: NumericalNode;
     symbolNode: TreeNode | null;
   } {
-    if (this.isNumerical(node)) {
+    if (isNumerical(node)) {
       return { coeff: node, symbolNode: null };
     }
-    if (node.type === "SYMBOL") {
+    if (node.type === "SYMBOL" || node.type === "POWER") {
       return { coeff: new Integer(1), symbolNode: node };
     }
     if (node.type === "MULTIPLY") {
-      if (this.isNumerical(node.left) && node.right.type === "SYMBOL") {
+      if (
+        isNumerical(node.left) &&
+        (node.right.type === "SYMBOL" || node.right.type === "POWER")
+      ) {
         return { coeff: node.left, symbolNode: node.right };
       }
-      if (node.left.type === "SYMBOL" && this.isNumerical(node.right)) {
+      if (
+        (node.left.type === "SYMBOL" || node.left.type === "POWER") &&
+        isNumerical(node.right)
+      ) {
         return { coeff: node.right, symbolNode: node.left };
       }
-      if (this.isNumerical(node.left) && node.right.type === "POWER") {
-        return { coeff: node.left, symbolNode: node.right };
-      }
-    }
-    if (node.type === "POWER") {
-      return { coeff: new Integer(1), symbolNode: node };
     }
     return { coeff: new Integer(1), symbolNode: node };
   }
@@ -225,12 +184,8 @@ export class Evaluator {
         "ADD",
       );
 
-      if (this.isZero(newCoeff)) {
-        return new Integer(0);
-      }
-      if (this.isOne(newCoeff)) {
-        return t1.symbolNode;
-      }
+      if (this.isZero(newCoeff)) return new Integer(0);
+      if (this.isOne(newCoeff)) return t1.symbolNode;
       return new Multiply(newCoeff, t1.symbolNode);
     }
 
@@ -338,9 +293,7 @@ export class Evaluator {
             ? leftInfo.base
             : new Power(leftInfo.base, new Integer(absExp));
 
-        if (this.isOne(combinedCoeff)) {
-          return new Divide(new Integer(1), denom);
-        }
+        if (this.isOne(combinedCoeff)) return new Divide(new Integer(1), denom);
         if (combinedCoeff.type === "INTEGER" && combinedCoeff.value === -1n) {
           return new Divide(new Integer(-1), denom);
         }
@@ -349,9 +302,7 @@ export class Evaluator {
         result = new Power(leftInfo.base, new Integer(totalExp));
       }
 
-      if (this.isOne(combinedCoeff)) {
-        return result;
-      }
+      if (this.isOne(combinedCoeff)) return result;
       if (combinedCoeff.type === "INTEGER" && combinedCoeff.value === -1n) {
         return this.negate(result);
       }
@@ -366,20 +317,13 @@ export class Evaluator {
           reducedCoeff.numerator === 1n
             ? t1.symbolNode
             : new Multiply(new Integer(reducedCoeff.numerator), t1.symbolNode);
-        if (reducedCoeff.denominator === 1n) {
-          return numNode;
-        }
+        if (reducedCoeff.denominator === 1n) return numNode;
         return new Divide(numNode, new Integer(reducedCoeff.denominator));
       }
       return new Multiply(reducedCoeff, t1.symbolNode);
     }
 
-    if (
-      t1.symbolNode === null &&
-      t2.symbolNode &&
-      this.isNumerical(left) &&
-      this.isOne(left)
-    ) {
+    if (t1.symbolNode === null && t2.symbolNode && this.isOne(left)) {
       return new Divide(new Integer(1), t2.symbolNode);
     }
 
@@ -403,8 +347,7 @@ export class Evaluator {
         op === "ADD"
           ? f1.numerator * f2.denominator + f2.numerator * f1.denominator
           : f1.numerator * f2.denominator - f2.numerator * f1.denominator;
-      const d = f1.denominator * f2.denominator;
-      return this.normalizeFraction(n, d);
+      return this.normalizeFraction(n, f1.denominator * f2.denominator);
     }
 
     let { whole: c1, exponent: e1 } = Evaluator.toDecimal(left);
@@ -438,10 +381,10 @@ export class Evaluator {
     const decLeft = Evaluator.toDecimal(left);
     const decRight = Evaluator.toDecimal(right);
 
-    const coeff = decLeft.whole * decRight.whole;
-    const exp = decLeft.exponent + decRight.exponent;
-
-    return Evaluator.normalizeDecimal(coeff, exp);
+    return Evaluator.normalizeDecimal(
+      decLeft.whole * decRight.whole,
+      decLeft.exponent + decRight.exponent,
+    );
   }
 
   private evaluateNumericDivide(
@@ -459,7 +402,7 @@ export class Evaluator {
   }
 
   private evaluateNumericMod(left: TreeNode, right: TreeNode): NumericalNode {
-    if (!this.isNumerical(left) || !this.isNumerical(right))
+    if (!isNumerical(left) || !isNumerical(right))
       throw new EvaluatorError("Modulo supported for numbers currently");
 
     if (left.type === "FRACTION" || right.type === "FRACTION") {
@@ -475,27 +418,20 @@ export class Evaluator {
       return this.normalizeFraction(n, q);
     }
 
-    const f1 = Evaluator.toDecimal(left);
     const f2 = Evaluator.toDecimal(right);
+
+    if (f2.whole === 0n) {
+      throw new EvaluatorError("Modulo by zero");
+    }
+
+    const f1 = Evaluator.toDecimal(left);
 
     const e1 = f1.exponent;
     const e2 = f2.exponent;
 
-    let c1 = f1.whole;
-    let c2 = f2.whole;
-
-    if (c2 === 0n) {
-      throw new EvaluatorError("Modulo by zero");
-    }
-
     const minExp = e1 < e2 ? e1 : e2;
-
-    if (e1 > minExp) {
-      c1 *= 10n ** (e1 - minExp);
-    }
-    if (e2 > minExp) {
-      c2 *= 10n ** (e2 - minExp);
-    }
+    const c1 = f1.whole * (e1 > minExp ? 10n ** (e1 - minExp) : 1n);
+    const c2 = f2.whole * (e2 > minExp ? 10n ** (e2 - minExp) : 1n);
 
     const c = ((c1 % c2) + c2) % c2;
     return Evaluator.normalizeDecimal(c, minExp);
@@ -503,14 +439,12 @@ export class Evaluator {
 
   private tryGetIntegerValue(node: TreeNode): bigint | null {
     if (node.type === "INTEGER") return node.value;
-    if (node.type === "DECIMAL") {
-      if (node.exponent >= 0n) {
-        return node.whole * 10n ** node.exponent;
-      }
-      return null;
+    if (node.type === "DECIMAL" && node.exponent >= 0n) {
+      return node.whole * 10n ** node.exponent;
     }
-    if (node.type === "FRACTION" && node.denominator === 1n)
+    if (node.type === "FRACTION" && node.denominator === 1n) {
       return node.numerator;
+    }
     return null;
   }
 
@@ -541,18 +475,14 @@ export class Evaluator {
     coeff: bigint,
     exp: bigint,
   ): Decimal | Integer {
-    if (coeff === 0n) {
-      return new Integer(0);
-    }
+    if (coeff === 0n) return new Integer(0);
 
     while (coeff % 10n === 0n && exp < 0n) {
       coeff /= 10n;
       exp += 1n;
     }
 
-    if (exp === 0n) {
-      return new Integer(coeff);
-    }
+    if (exp === 0n) return new Integer(coeff);
     return new Decimal(coeff, exp);
   }
 
@@ -577,11 +507,9 @@ export class Evaluator {
 
     const s = node.whole;
     const exp = node.exponent;
-    if (exp >= 0n) {
-      return new Fraction(s * 10n ** exp, 1n);
-    } else {
-      return new Fraction(s, 10n ** -exp);
-    }
+    return exp >= 0n
+      ? new Fraction(s * 10n ** exp, 1n)
+      : new Fraction(s, 10n ** -exp);
   }
 
   static asDecimal(
@@ -595,53 +523,50 @@ export class Evaluator {
       throw new EvaluatorError("Significant figures must be greater than 0");
     }
 
-    if (
-      node.type === "INTEGER" ||
-      node.type === "DECIMAL" ||
-      node.type === "FRACTION"
-    ) {
-      if (node.type === "INTEGER") return node;
-      let { numerator: num, denominator: den } = Evaluator.toFraction(node);
-      if (num === 0n) return new Integer(0);
-
-      const isNegative = num < 0n;
-      if (isNegative) num = -num;
-
-      let scaleExp = 0n;
-      while (num < den) {
-        num *= 10n;
-        scaleExp -= 1n;
-      }
-      while (num >= den * 10n) {
-        den *= 10n;
-        scaleExp += 1n;
-      }
-
-      let coeff = 0n;
-      let currentNum = num;
-      const targetDigits = BigInt(sigFigs);
-      const totalDigitsToGen = targetDigits + 1n;
-
-      for (let i = 0n; i < totalDigitsToGen; i++) {
-        coeff = coeff * 10n + currentNum / den;
-        currentNum = (currentNum % den) * 10n;
-      }
-
-      const extraDigit = coeff % 10n;
-      coeff /= 10n;
-
-      if (roundingMode === "round" && extraDigit >= 5n) {
-        coeff += 1n;
-      }
-
-      const finalExp = scaleExp - (targetDigits - 1n);
-      if (isNegative) coeff = -coeff;
-
-      return Evaluator.normalizeDecimal(coeff, finalExp);
+    if (!isNumerical(node)) {
+      throw new EvaluatorError(
+        `Cannot convert node type ${node.type} to decimal directly`,
+      );
     }
 
-    throw new EvaluatorError(
-      `Cannot convert node type ${node.type} to decimal directly`,
-    );
+    if (node.type === "INTEGER") return node;
+
+    let { numerator: num, denominator: den } = Evaluator.toFraction(node);
+    if (num === 0n) return new Integer(0);
+
+    const isNegative = num < 0n;
+    if (isNegative) num = -num;
+
+    let scaleExp = 0n;
+    while (num < den) {
+      num *= 10n;
+      scaleExp -= 1n;
+    }
+    while (num >= den * 10n) {
+      den *= 10n;
+      scaleExp += 1n;
+    }
+
+    let coeff = 0n;
+    let currentNum = num;
+    const targetDigits = BigInt(sigFigs);
+    const totalDigitsToGen = targetDigits + 1n;
+
+    for (let i = 0n; i < totalDigitsToGen; i++) {
+      coeff = coeff * 10n + currentNum / den;
+      currentNum = (currentNum % den) * 10n;
+    }
+
+    const extraDigit = coeff % 10n;
+    coeff /= 10n;
+
+    if (roundingMode === "round" && extraDigit >= 5n) {
+      coeff += 1n;
+    }
+
+    const finalExp = scaleExp - (targetDigits - 1n);
+    if (isNegative) coeff = -coeff;
+
+    return Evaluator.normalizeDecimal(coeff, finalExp);
   }
 }
