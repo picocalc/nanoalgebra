@@ -5,7 +5,7 @@ import { Add, Constant, Multiply, Subtract, TreeNode } from "./nodes";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
-    super("LexerError", message, pos);
+    super("ParserError", message, pos);
   }
 }
 
@@ -75,23 +75,51 @@ export class Parser {
       return new Constant(token.whole);
     }
 
+    if (token.type === "LPAREN") {
+      this.consume();
+      const node = this.parseExpression();
+      const nextToken = this.peek();
+      if (nextToken?.type !== "RPAREN") {
+        throw new ParserError(
+          "Expected closing parenthesis",
+          nextToken?.pos ?? this.tokens.at(-1)?.pos ?? 0,
+        );
+      }
+      this.consume();
+      return node;
+    }
+
     throw new ParserError(`Unexpected token type '${token.type}'`, token.pos);
   }
 
-  private parseTerm(): TreeNode {
+  private parseImplicitMul(): TreeNode {
     let left: TreeNode = this.parseFactor();
 
     while (!this.isAtEnd()) {
       const token = this.peek();
       if (!token) break;
 
-      if (token.type === "MUL") {
-        this.consume();
+      if (token.type === "NUMBER" || token.type === "LPAREN") {
         const right = this.parseFactor();
         left = new Multiply(left, right);
       } else {
         break;
       }
+    }
+
+    return left;
+  }
+
+  private parseTerm(): TreeNode {
+    let left: TreeNode = this.parseImplicitMul();
+
+    while (!this.isAtEnd()) {
+      const token = this.peek();
+      if (token?.type !== "MUL") break;
+
+      this.consume();
+      const right = this.parseImplicitMul();
+      left = new Multiply(left, right);
     }
 
     return left;

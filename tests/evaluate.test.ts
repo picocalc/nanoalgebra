@@ -43,11 +43,42 @@ describe("evaluate", () => {
   });
 
   describe("operation precedence order", () => {
-    it("respects operator precedence order", () => {
+    it("handles operator precedence order", () => {
       expect(evaluate("1 + 2 * 3")).toBe("7");
       expect(evaluate("2 * 3 + 1")).toBe("7");
       expect(evaluate("10 - 2 * 4")).toBe("2");
       expect(evaluate("10 * 2 - 4")).toBe("16");
     });
+
+    it("handles precedence order of implicit multiplication", () => {
+      expect(evaluate("2 + 2(1 + 1)")).toBe("6");
+      expect(evaluate("8 - 2(1 + 2)")).toBe("2");
+      expect(evaluate("2 * 2(1 + 2)")).toBe("12");
+    });
+  });
+
+  it("handles unary operators with multiplication", () => {
+    expect(evaluate("-2 * 3")).toBe("-6");
+    expect(evaluate("2 * -3")).toBe("-6");
+    expect(evaluate("-2 * -3")).toBe("6");
+  });
+
+  it("handles parentheses", () => {
+    expect(evaluate("(1 + 2) * 3")).toBe("9");
+    expect(evaluate("2 * (3 + 4)")).toBe("14");
+  });
+
+  it("handles nested parentheses", () => {
+    expect(evaluate("((1 + 1) * 2) + 1")).toBe("5");
+  });
+
+  it("handles unary operators with parentheses", () => {
+    expect(evaluate("-(1 + 1)")).toBe("-2");
+  });
+
+  it("handles implicit multiplication", () => {
+    expect(evaluate("2(2)")).toBe("4");
+    expect(evaluate("2(3+4)")).toBe("14");
+    expect(evaluate("(1+2)(3+4)")).toBe("21");
   });
 });
