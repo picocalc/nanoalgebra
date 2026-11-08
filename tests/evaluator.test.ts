@@ -81,4 +81,42 @@ describe("evaluate", () => {
     expect(evaluate("2(3+4)")).toBe("14");
     expect(evaluate("(1+2)(3+4)")).toBe("21");
   });
+
+  it("handles a decimal", () => {
+    expect(evaluate("0.1")).toBe("0.1");
+    expect(evaluate("0.01")).toBe("0.01");
+  });
+
+  it("handles a decimal with implicit whole part", () => {
+    expect(evaluate(".1")).toBe("0.1");
+    expect(evaluate(".01")).toBe("0.01");
+  });
+
+  it("handles addition of 2 decimals", () => {
+    expect(evaluate("0.1 + 0.1")).toBe("0.2");
+    expect(evaluate("0.1 + 0.2")).toBe("0.3");
+    expect(evaluate("0.1 + 0.01")).toBe("0.11");
+  });
+
+  it("handles addition of a whole number with a decimal", () => {
+    expect(evaluate("1 + 0.2")).toBe("1.2");
+    expect(evaluate("0.3 + 2")).toBe("2.3");
+  });
+
+  it("handles multiplication of 2 decimals", () => {
+    expect(evaluate("0.5 * 0.5")).toBe("0.25");
+    expect(evaluate("0.1 * 0.2")).toBe("0.02");
+  });
+
+  it("handles multiplication of a whole number with a decimal", () => {
+    expect(evaluate("2 * 0.5")).toBe("1");
+    expect(evaluate("0.3 * 7")).toBe("2.1");
+  });
+
+  it("handles scientific notation", () => {
+    expect(evaluate("1e2")).toBe("100");
+    expect(evaluate("1e-2")).toBe("0.01");
+    expect(evaluate("1.2e3")).toBe("1200");
+    expect(evaluate("1.2e-3")).toBe("0.0012");
+  });
 });

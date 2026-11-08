@@ -1,7 +1,8 @@
 import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
-import { Add, Constant, Multiply, Subtract, TreeNode } from "./nodes";
+import type { TreeNode } from "./nodes";
+import { Add, Decimal, Integer, Multiply, Subtract } from "./nodes";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -67,12 +68,26 @@ export class Parser {
     if (token.type === "MINUS") {
       this.consume();
       const operand = this.parseFactor();
-      return new Subtract(new Constant(0), operand);
+      return new Subtract(new Integer(0), operand);
     }
 
     if (token.type === "NUMBER") {
       this.consume();
-      return new Constant(token.whole);
+
+      if (token.fraction !== undefined || token.exponent !== undefined) {
+        const wholePart = token.whole === "" ? "0" : token.whole;
+        const fracPart = token.fraction ?? "";
+        const combinedCoeff = BigInt(wholePart + fracPart);
+
+        let exp = -BigInt(fracPart.length);
+        if (token.exponent !== undefined) {
+          exp += BigInt(token.exponent);
+        }
+
+        return new Decimal(combinedCoeff, exp);
+      }
+
+      return new Integer(token.whole);
     }
 
     if (token.type === "LPAREN") {
@@ -93,7 +108,7 @@ export class Parser {
   }
 
   private parseImplicitMul(): TreeNode {
-    let left: TreeNode = this.parseFactor();
+    let left = this.parseFactor();
 
     while (!this.isAtEnd()) {
       const token = this.peek();
@@ -111,7 +126,7 @@ export class Parser {
   }
 
   private parseTerm(): TreeNode {
-    let left: TreeNode = this.parseImplicitMul();
+    let left = this.parseImplicitMul();
 
     while (!this.isAtEnd()) {
       const token = this.peek();
@@ -126,7 +141,7 @@ export class Parser {
   }
 
   private parseExpression(): TreeNode {
-    let left: TreeNode = this.parseTerm();
+    let left = this.parseTerm();
 
     while (!this.isAtEnd()) {
       const token = this.peek();

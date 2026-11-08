@@ -1,16 +1,15 @@
+import { Evaluator } from "#lib/evaluator";
 import type { LexerOptions } from "#lib/lexer";
 import { tokenize } from "#lib/lexer";
 import { Parser } from "#lib/parser";
 
 export { AlgebraError } from "#lib/errors";
 
-export { tokenize } from "#lib/lexer";
-
 function evaluate(expression: string, options?: LexerOptions): string {
-  return new Parser(tokenize(expression, options))
-    .parse()
-    .evaluate()
-    .toString();
+  const tokens = tokenize(expression, options);
+  const tree = new Parser(tokens).parse();
+  const evaluator = new Evaluator();
+  return evaluator.toDecimal(evaluator.evaluate(tree)).toString();
 }
 
-export { evaluate, Parser };
+export { evaluate, tokenize, Parser, Evaluator };

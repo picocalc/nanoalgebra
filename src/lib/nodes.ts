@@ -1,26 +1,21 @@
-export type NodeType = "CONSTANT" | "ADD" | "SUBTRACT" | "MULTIPLY";
+type NodeType = "INTEGER" | "DECIMAL" | "ADD" | "SUBTRACT" | "MULTIPLY";
 
-export abstract class TreeNode<T extends NodeType = NodeType> {
+abstract class BaseNode<T extends NodeType = NodeType> {
   readonly type: T;
 
   constructor(type: T) {
     this.type = type;
   }
 
-  abstract evaluate(env?: Record<string, bigint>): bigint;
   abstract toString(): string;
 }
 
-export class Constant extends TreeNode<"CONSTANT"> {
+export class Integer extends BaseNode<"INTEGER"> {
   readonly value: bigint;
 
   constructor(value: string | number | bigint) {
-    super("CONSTANT");
+    super("INTEGER");
     this.value = BigInt(value);
-  }
-
-  evaluate(): bigint {
-    return this.value;
   }
 
   toString(): string {
@@ -28,18 +23,37 @@ export class Constant extends TreeNode<"CONSTANT"> {
   }
 }
 
-export class Add extends TreeNode<"ADD"> {
-  readonly left: TreeNode;
-  readonly right: TreeNode;
+export class Decimal extends BaseNode<"DECIMAL"> {
+  readonly whole: bigint;
+  readonly exponent: bigint;
 
-  constructor(left: TreeNode, right: TreeNode) {
-    super("ADD");
-    this.left = left;
-    this.right = right;
+  constructor(whole: bigint, exponent: bigint) {
+    super("DECIMAL");
+    this.whole = whole;
+    this.exponent = exponent;
   }
 
-  evaluate(env?: Record<string, bigint>): bigint {
-    return this.left.evaluate(env) + this.right.evaluate(env);
+  toString(): string {
+    const s = this.whole.toString();
+    const exp = Number(this.exponent);
+    if (exp === 0) return s;
+    if (exp > 0) return s + "0".repeat(exp);
+
+    const absExp = -exp;
+    if (s.length <= absExp) {
+      return `0.${s.padStart(absExp, "0")}`;
+    }
+    const idx = s.length - absExp;
+    return `${s.slice(0, idx)}.${s.slice(idx)}`;
+  }
+}
+
+export class Add extends BaseNode<"ADD"> {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
+    super("ADD");
   }
 
   toString(): string {
@@ -47,18 +61,12 @@ export class Add extends TreeNode<"ADD"> {
   }
 }
 
-export class Subtract extends TreeNode<"SUBTRACT"> {
-  readonly left: TreeNode;
-  readonly right: TreeNode;
-
-  constructor(left: TreeNode, right: TreeNode) {
+export class Subtract extends BaseNode<"SUBTRACT"> {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
     super("SUBTRACT");
-    this.left = left;
-    this.right = right;
-  }
-
-  evaluate(env?: Record<string, bigint>): bigint {
-    return this.left.evaluate(env) - this.right.evaluate(env);
   }
 
   toString(): string {
@@ -66,21 +74,17 @@ export class Subtract extends TreeNode<"SUBTRACT"> {
   }
 }
 
-export class Multiply extends TreeNode<"MULTIPLY"> {
-  readonly left: TreeNode;
-  readonly right: TreeNode;
-
-  constructor(left: TreeNode, right: TreeNode) {
+export class Multiply extends BaseNode<"MULTIPLY"> {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
     super("MULTIPLY");
-    this.left = left;
-    this.right = right;
-  }
-
-  evaluate(env?: Record<string, bigint>): bigint {
-    return this.left.evaluate(env) * this.right.evaluate(env);
   }
 
   toString(): string {
     return `(${this.left.toString()} * ${this.right.toString()})`;
   }
 }
+
+export type TreeNode = Integer | Decimal | Add | Subtract | Multiply;
