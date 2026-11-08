@@ -6,6 +6,7 @@ type NodeType =
   | "INTEGER"
   | "DECIMAL"
   | "FRACTION"
+  | "SYMBOL"
   | "ADD"
   | "SUBTRACT"
   | "MULTIPLY"
@@ -129,7 +130,18 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
   }
 
   toString(): string {
-    return `(${this.left.toString()} * ${this.right.toString()})`;
+    const { left, right } = this;
+    if (
+      (right.type === "SYMBOL" || right.type === "POWER") &&
+      left.type !== "SYMBOL" &&
+      left.type !== "POWER"
+    ) {
+      if (left.type === "INTEGER" && left.value === -1n) {
+        return `-${right.toString()}`;
+      }
+      return `${left.toString()}${right.toString()}`;
+    }
+    return `(${left.toString()} * ${right.toString()})`;
   }
 }
 
@@ -142,7 +154,8 @@ export class Divide extends BaseNode<"DIVIDE"> {
   }
 
   toString(): string {
-    return `(${this.left.toString()} / ${this.right.toString()})`;
+    const { left, right } = this;
+    return `(${left.toString()} / ${right.toString()})`;
   }
 }
 
@@ -170,7 +183,21 @@ export class Power extends BaseNode<"POWER"> {
   }
 
   toString(): string {
-    return `(${this.left.toString()} ^ ${this.right.toString()})`;
+    const { left, right } = this;
+    if (left.type === "SYMBOL") {
+      return `${left.toString()}^${right.toString()}`;
+    }
+    return `(${left.toString()} ^ ${right.toString()})`;
+  }
+}
+
+export class SymbolNode extends BaseNode<"SYMBOL"> {
+  constructor(readonly name: string) {
+    super("SYMBOL");
+  }
+
+  toString(): string {
+    return this.name;
   }
 }
 
@@ -178,6 +205,7 @@ export type NumericalNode = Integer | Decimal | Fraction;
 
 export type TreeNode =
   | NumericalNode
+  | SymbolNode
   | Add
   | Subtract
   | Multiply

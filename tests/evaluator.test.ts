@@ -3,6 +3,38 @@ import { describe, it, expect } from "bun:test";
 import { Evaluator, EvaluatorError } from "#lib/evaluator";
 import { evaluate } from "#src";
 
+describe("Evaluator", () => {
+  it("can convert numbers to decimals", () => {
+    expect(Evaluator.asDecimal(evaluate("0 * (1/2)")).toString()).toBe("0");
+    expect(Evaluator.asDecimal(evaluate("1")).toString()).toBe("1");
+    expect(Evaluator.asDecimal(evaluate("0.5")).toString()).toBe("0.5");
+    expect(Evaluator.asDecimal(evaluate("1/2")).toString()).toBe("0.5");
+    expect(Evaluator.asDecimal(evaluate("-1/2")).toString()).toBe("-0.5");
+
+    expect(
+      Evaluator.asDecimal(evaluate("1/3"), { sigFigs: 7 }).toString(),
+    ).toBe("0.3333333");
+    expect(
+      Evaluator.asDecimal(evaluate("2/3"), { sigFigs: 7 }).toString(),
+    ).toBe("0.6666667");
+    expect(
+      Evaluator.asDecimal(evaluate("2/3"), {
+        sigFigs: 7,
+        roundingMode: "truncate",
+      }).toString(),
+    ).toBe("0.6666666");
+    expect(
+      Evaluator.asDecimal(evaluate("200/3"), { sigFigs: 7 }).toString(),
+    ).toBe("66.66667");
+  });
+
+  it("can convert decimals to fractions", () => {
+    expect(
+      Evaluator.toFraction(Evaluator.asDecimal(evaluate("0.1"))).toString(),
+    ).toBe("1/10");
+  });
+});
+
 describe("evaluate", () => {
   it("handles a number", () => {
     expect(evaluate("1").toString()).toBe("1");
@@ -284,31 +316,114 @@ describe("evaluate", () => {
     });
   });
 
-  it("can convert numbers to decimals", () => {
-    expect(Evaluator.asDecimal(evaluate("0 * (1/2)")).toString()).toBe("0");
-    expect(Evaluator.asDecimal(evaluate("1")).toString()).toBe("1");
-    expect(Evaluator.asDecimal(evaluate("0.5")).toString()).toBe("0.5");
-    expect(Evaluator.asDecimal(evaluate("1/2")).toString()).toBe("0.5");
-    expect(Evaluator.asDecimal(evaluate("-1/2")).toString()).toBe("-0.5");
+  describe("constants", () => {
+    it("handles a constant", () => {
+      expect(evaluate("pi").toString()).toBe("pi");
+      expect(evaluate("e").toString()).toBe("e");
 
-    expect(
-      Evaluator.asDecimal(evaluate("1/3"), { sigFigs: 7 }).toString(),
-    ).toBe("0.3333333");
-    expect(
-      Evaluator.asDecimal(evaluate("2/3"), { sigFigs: 7 }).toString(),
-    ).toBe("0.6666667");
-    expect(
-      Evaluator.asDecimal(evaluate("2/3"), {
-        sigFigs: 7,
-        roundingMode: "truncate",
-      }).toString(),
-    ).toBe("0.6666666");
-    expect(
-      Evaluator.asDecimal(evaluate("200/3"), { sigFigs: 7 }).toString(),
-    ).toBe("66.66667");
-  });
+      expect(evaluate("1pi").toString()).toBe("pi");
+      expect(evaluate("1e").toString()).toBe("e");
 
-  it("can convert decimals to fractions", () => {
-    expect(Evaluator.toFraction(evaluate("0.1")).toString()).toBe("1/10");
+      expect(evaluate("3pi").toString()).toBe("3pi");
+      expect(evaluate("3e").toString()).toBe("3e");
+
+      expect(evaluate("+pi").toString()).toBe("pi");
+      expect(evaluate("+e").toString()).toBe("e");
+
+      expect(evaluate("-pi").toString()).toBe("-pi");
+      expect(evaluate("-e").toString()).toBe("-e");
+
+      expect(evaluate("0pi").toString()).toBe("0");
+      expect(evaluate("0e").toString()).toBe("0");
+    });
+
+    it("handles addition and subtraction of constants", () => {
+      expect(evaluate("pi + pi").toString()).toBe("2pi");
+      expect(evaluate("e + e").toString()).toBe("2e");
+      expect(evaluate("2pi + 3pi").toString()).toBe("5pi");
+      expect(evaluate("2e + 3e").toString()).toBe("5e");
+      expect(evaluate("pi + 0").toString()).toBe("pi");
+      expect(evaluate("0 + pi").toString()).toBe("pi");
+      expect(evaluate("e + 0").toString()).toBe("e");
+      expect(evaluate("0 + e").toString()).toBe("e");
+
+      expect(evaluate("2pi - pi").toString()).toBe("pi");
+      expect(evaluate("5e - 3e").toString()).toBe("2e");
+      expect(evaluate("pi - pi").toString()).toBe("0");
+      expect(evaluate("e - e").toString()).toBe("0");
+      expect(evaluate("pi - 0").toString()).toBe("pi");
+      expect(evaluate("0 - pi").toString()).toBe("-pi");
+      expect(evaluate("e - 0").toString()).toBe("e");
+      expect(evaluate("0 - e").toString()).toBe("-e");
+
+      expect(evaluate("pi - pi + e").toString()).toBe("e");
+      expect(evaluate("e - e + pi").toString()).toBe("pi");
+
+      expect(evaluate("0pi + e").toString()).toBe("e");
+      expect(evaluate("0e + pi").toString()).toBe("pi");
+
+      expect(evaluate("0/pi + e").toString()).toBe("e");
+      expect(evaluate("0/e + pi").toString()).toBe("pi");
+    });
+
+    it("handles multiplication of constants", () => {
+      expect(evaluate("2 * pi").toString()).toBe("2pi");
+      expect(evaluate("2 * e").toString()).toBe("2e");
+      expect(evaluate("pi * 2").toString()).toBe("2pi");
+      expect(evaluate("e * 2").toString()).toBe("2e");
+      expect(evaluate("0 * pi").toString()).toBe("0");
+      expect(evaluate("0 * e").toString()).toBe("0");
+      expect(evaluate("pi * 0").toString()).toBe("0");
+      expect(evaluate("e * 0").toString()).toBe("0");
+
+      expect(evaluate("pi * pi^-1").toString()).toBe("1");
+      expect(evaluate("pi^-1 * pi").toString()).toBe("1");
+
+      expect(evaluate("pi * pi").toString()).toBe("pi^2");
+      expect(evaluate("2 * pi * pi").toString()).toBe("2pi^2");
+    });
+
+    it("handles division of constants", () => {
+      expect(evaluate("pi / 1").toString()).toBe("pi");
+      expect(evaluate("e / 1").toString()).toBe("e");
+      expect(evaluate("2pi / 1").toString()).toBe("2pi");
+      expect(evaluate("2e / 1").toString()).toBe("2e");
+      expect(evaluate("2pi / 2").toString()).toBe("pi");
+      expect(evaluate("2e / 2").toString()).toBe("e");
+      expect(evaluate("6pi / 2").toString()).toBe("3pi");
+      expect(evaluate("6e / 2").toString()).toBe("3e");
+      expect(evaluate("pi / 2").toString()).toBe("(pi / 2)");
+      expect(evaluate("e / 2").toString()).toBe("(e / 2)");
+      expect(evaluate("6pi / 9").toString()).toBe("(2pi / 3)");
+      expect(evaluate("6e / 9").toString()).toBe("(2e / 3)");
+      expect(evaluate("pi / 2pi").toString()).toBe("1/2");
+      expect(evaluate("2pi / pi").toString()).toBe("2");
+
+      expect(evaluate("pi/pi").toString()).toBe("1");
+      expect(evaluate("e/e").toString()).toBe("1");
+      expect(evaluate("2pi/2pi").toString()).toBe("1");
+      expect(evaluate("2e/2e").toString()).toBe("1");
+      expect(evaluate("2pi/pi").toString()).toBe("2");
+      expect(evaluate("2e/e").toString()).toBe("2");
+      expect(evaluate("pi/2pi").toString()).toBe("1/2");
+      expect(evaluate("e/2e").toString()).toBe("1/2");
+
+      expect(evaluate("2pi^2 / 2").toString()).toBe("pi^2");
+      expect(evaluate("pi^2 / pi").toString()).toBe("pi");
+      expect(evaluate("pi^3 / pi").toString()).toBe("pi^2");
+      expect(evaluate("pi / pi^2").toString()).toBe("(1 / pi)");
+      expect(evaluate("1/pi").toString()).toBe("(1 / pi)");
+    });
+
+    it("handles exponentiation of constants", () => {
+      expect(evaluate("pi ^ 0").toString()).toBe("1");
+      expect(evaluate("e ^ 0").toString()).toBe("1");
+      expect(evaluate("pi ^ 1").toString()).toBe("pi");
+      expect(evaluate("e ^ 1").toString()).toBe("e");
+
+      expect(evaluate("0 + pi^2").toString()).toBe("pi^2");
+      expect(evaluate("pi^2 + 0").toString()).toBe("pi^2");
+      expect(evaluate("pi^2 + pi^2").toString()).toBe("2pi^2");
+    });
   });
 });

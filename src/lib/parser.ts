@@ -11,6 +11,7 @@ import {
   Multiply,
   Power,
   Subtract,
+  SymbolNode,
 } from "./nodes";
 
 export class ParserError extends AlgebraError {
@@ -74,6 +75,11 @@ export class Parser {
       return new Integer(token.whole);
     }
 
+    if (token.type === "IDENTIFIER") {
+      this.consume(token);
+      return new SymbolNode(token.id);
+    }
+
     if (token.type === "LPAREN") {
       this.consume(token);
       const node = this.parseExpression();
@@ -84,7 +90,7 @@ export class Parser {
           nextToken?.pos ?? this.tokens.at(-1)?.pos ?? 0,
         );
       }
-      this.consume(token);
+      this.consume(nextToken);
       return node;
     }
 
@@ -109,7 +115,11 @@ export class Parser {
 
     let token;
     while ((token = this.peek())) {
-      if (token.type === "NUMBER" || token.type === "LPAREN") {
+      if (
+        token.type === "NUMBER" ||
+        token.type === "LPAREN" ||
+        token.type === "IDENTIFIER"
+      ) {
         const right = this.parseExponent();
         left = new Multiply(left, right);
       } else {
