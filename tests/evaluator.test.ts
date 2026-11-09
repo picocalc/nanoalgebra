@@ -265,6 +265,10 @@ describe("evaluate", () => {
       expect(evaluate("(2/3)^3").toString()).toBe("8/27");
     });
 
+    it("handles exponentiation of decimals", () => {
+      expect(evaluate("1.5^2").toString()).toBe("2.25");
+    });
+
     it("handles exponentiation with parantheses", () => {
       expect(evaluate("(1)^1").toString()).toBe("1");
       expect(evaluate("1^(1)").toString()).toBe("1");

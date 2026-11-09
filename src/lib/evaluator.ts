@@ -84,6 +84,8 @@ export class Evaluator {
       case "MOD": {
         const left = this.evaluate(node.left);
         const right = this.evaluate(node.right);
+        if (!isNumerical(left) || !isNumerical(right))
+          throw new EvaluatorError("Modulo supported for numbers currently");
         return this.evaluateNumericMod(left, right);
       }
 
@@ -129,10 +131,6 @@ export class Evaluator {
   }
 
   private negate(node: TreeNode): TreeNode {
-    if (isNumerical(node)) {
-      const f = Evaluator.toFraction(node);
-      return this.normalizeFraction(-f.numerator, f.denominator);
-    }
     return new Multiply(new Integer(-1), node);
   }
 
@@ -143,22 +141,12 @@ export class Evaluator {
     if (isNumerical(node)) {
       return { coeff: node, symbolNode: null };
     }
-    if (node.type === "SYMBOL" || node.type === "POWER") {
-      return { coeff: new Integer(1), symbolNode: node };
-    }
-    if (node.type === "MULTIPLY") {
-      if (
-        isNumerical(node.left) &&
-        (node.right.type === "SYMBOL" || node.right.type === "POWER")
-      ) {
-        return { coeff: node.left, symbolNode: node.right };
-      }
-      if (
-        (node.left.type === "SYMBOL" || node.left.type === "POWER") &&
-        isNumerical(node.right)
-      ) {
-        return { coeff: node.right, symbolNode: node.left };
-      }
+    if (
+      node.type === "MULTIPLY" &&
+      isNumerical(node.left) &&
+      (node.right.type === "SYMBOL" || node.right.type === "POWER")
+    ) {
+      return { coeff: node.left, symbolNode: node.right };
     }
     return { coeff: new Integer(1), symbolNode: node };
   }
@@ -191,7 +179,7 @@ export class Evaluator {
   }
 
   private getBaseAndExp(
-    node: TreeNode,
+    node: SymbolicNode,
   ): { base: TreeNode; exp: bigint } | null {
     if (node.type === "SYMBOL") {
       return { base: node, exp: 1n };
@@ -252,18 +240,6 @@ export class Evaluator {
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
       return new Multiply(combinedCoeff, result);
-    }
-
-    if (
-      t1.symbolNode &&
-      t2.symbolNode &&
-      t1.symbolNode.toString() === t2.symbolNode.toString()
-    ) {
-      const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-      return new Multiply(
-        combinedCoeff,
-        new Power(t1.symbolNode, new Integer(2)),
-      );
     }
 
     return null;
@@ -432,10 +408,10 @@ export class Evaluator {
     return this.normalizeFraction(n, d);
   }
 
-  private evaluateNumericMod(left: TreeNode, right: TreeNode): NumericalNode {
-    if (!isNumerical(left) || !isNumerical(right))
-      throw new EvaluatorError("Modulo supported for numbers currently");
-
+  private evaluateNumericMod(
+    left: NumericalNode,
+    right: NumericalNode,
+  ): NumericalNode {
     if (left.type === "FRACTION" || right.type === "FRACTION") {
       const a = Evaluator.toFraction(left);
       const b = Evaluator.toFraction(right);
