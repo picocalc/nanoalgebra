@@ -211,8 +211,7 @@ export function isNumerical(node: TreeNode): node is NumericalNode {
 
 export type NumericalNode = Integer | Decimal | Fraction;
 
-export type TreeNode =
-  | NumericalNode
+export type SymbolicNode =
   | SymbolNode
   | Add
   | Subtract
@@ -220,3 +219,5 @@ export type TreeNode =
   | Divide
   | Modulo
   | Power;
+
+export type TreeNode = NumericalNode | SymbolicNode;
