@@ -17,6 +17,7 @@ type NodeType =
 abstract class BaseNode<T extends NodeType = NodeType> {
   constructor(readonly type: T) {}
 
+  abstract print(): string;
   abstract toString(): string;
 }
 
@@ -28,6 +29,9 @@ export class Integer extends BaseNode<"INTEGER"> {
     this.value = BigInt(value);
   }
 
+  print(): string {
+    return this.toString();
+  }
   toString(): string {
     return this.value.toString();
   }
@@ -41,6 +45,9 @@ export class Decimal extends BaseNode<"DECIMAL"> {
     super("DECIMAL");
   }
 
+  print(): string {
+    return this.toString();
+  }
   toString(): string {
     let s = this.whole.toString();
     const isNegative = s.startsWith("-");
@@ -70,10 +77,10 @@ export class Decimal extends BaseNode<"DECIMAL"> {
 }
 
 export class Fraction extends BaseNode<"FRACTION"> {
-  readonly numerator: bigint;
-  readonly denominator: bigint;
-
-  constructor(numerator: bigint, denominator: bigint) {
+  constructor(
+    readonly numerator: bigint,
+    readonly denominator: bigint,
+  ) {
     super("FRACTION");
     if (denominator === 0n) throw new EvaluatorError("Division by zero");
 
@@ -89,9 +96,11 @@ export class Fraction extends BaseNode<"FRACTION"> {
     this.denominator = d / g;
   }
 
-  toString(): string {
-    if (this.denominator === 1n) return this.numerator.toString();
+  print(): string {
     return `${this.numerator}/${this.denominator}`;
+  }
+  toString(): string {
+    return `(${this.numerator}/${this.denominator})`;
   }
 }
 
@@ -103,6 +112,9 @@ export class Add extends BaseNode<"ADD"> {
     super("ADD");
   }
 
+  print(): string {
+    return `${this.left.print()} + ${this.right.print()}`;
+  }
   toString(): string {
     return `(${this.left.toString()} + ${this.right.toString()})`;
   }
@@ -116,6 +128,9 @@ export class Subtract extends BaseNode<"SUBTRACT"> {
     super("SUBTRACT");
   }
 
+  print(): string {
+    return `${this.left.print()} - ${this.right.print()}`;
+  }
   toString(): string {
     return `(${this.left.toString()} - ${this.right.toString()})`;
   }
@@ -129,19 +144,30 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
     super("MULTIPLY");
   }
 
-  toString(): string {
+  print(): string {
     const { left, right } = this;
     if (
       (right.type === "SYMBOL" || right.type === "POWER") &&
-      left.type !== "SYMBOL" &&
-      left.type !== "POWER"
+      left.type === "INTEGER"
     ) {
-      if (left.type === "INTEGER" && left.value === -1n) {
-        return `-${right.toString()}`;
+      if (left.value === -1n) {
+        return `-${right.print()}`;
       }
-      return `${left.toString()}${right.toString()}`;
+      return `${left.print()}${right.print()}`;
     }
-    return `(${left.toString()} * ${right.toString()})`;
+    if (
+      (right.type === "SYMBOL" || right.type === "POWER") &&
+      left.type === "FRACTION"
+    ) {
+      if (left.numerator === 1n) {
+        return `${right.print()}/${left.denominator}`;
+      }
+      return `${left.numerator}${right.print()}/${left.denominator}`;
+    }
+    return `${left.print()} * ${right.print()}`;
+  }
+  toString(): string {
+    return `(${this.left.toString()} * ${this.right.toString()})`;
   }
 }
 
@@ -153,9 +179,11 @@ export class Divide extends BaseNode<"DIVIDE"> {
     super("DIVIDE");
   }
 
+  print(): string {
+    return `${this.left.print()} / ${this.right.print()}`;
+  }
   toString(): string {
-    const { left, right } = this;
-    return `(${left.toString()} / ${right.toString()})`;
+    return `(${this.left.toString()} / ${this.right.toString()})`;
   }
 }
 
@@ -169,6 +197,9 @@ export class Modulo extends BaseNode<"MOD"> {
     this.right = right;
   }
 
+  print(): string {
+    return `${this.left.print()} % ${this.right.print()}`;
+  }
   toString(): string {
     return `(${this.left.toString()} % ${this.right.toString()})`;
   }
@@ -182,12 +213,20 @@ export class Power extends BaseNode<"POWER"> {
     super("POWER");
   }
 
-  toString(): string {
+  print(): string {
     const { left, right } = this;
-    if (left.type === "SYMBOL" || right.type === "SYMBOL") {
-      return `${left.toString()}^${right.toString()}`;
+    if (
+      right.type === "POWER" ||
+      right.type === "SYMBOL" ||
+      right.type === "INTEGER" ||
+      right.type === "DECIMAL"
+    ) {
+      return `${left.print()}^${right.print()}`;
     }
-    return `(${left.toString()} ^ ${right.toString()})`;
+    return `${left.print()}^(${right.print()})`;
+  }
+  toString(): string {
+    return `(${this.left.toString()} ^ ${this.right.toString()})`;
   }
 }
 
@@ -196,6 +235,9 @@ export class SymbolNode extends BaseNode<"SYMBOL"> {
     super("SYMBOL");
   }
 
+  print(): string {
+    return this.name;
+  }
   toString(): string {
     return this.name;
   }

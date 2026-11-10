@@ -5,26 +5,32 @@ import { parse } from "#src";
 
 describe("parse", () => {
   it("parses addition", () => {
+    expect(parse("1 + 1").print()).toBe("1 + 1");
     expect(parse("1 + 1").toString()).toBe("(1 + 1)");
   });
 
   it("parses subtraction", () => {
+    expect(parse("1 - 1").print()).toBe("1 - 1");
     expect(parse("1 - 1").toString()).toBe("(1 - 1)");
   });
 
   it("parses multiplication", () => {
+    expect(parse("1 * 1").print()).toBe("1 * 1");
     expect(parse("1 * 1").toString()).toBe("(1 * 1)");
   });
 
   it("parses division", () => {
+    expect(parse("1 / 1").print()).toBe("1 / 1");
     expect(parse("1 / 1").toString()).toBe("(1 / 1)");
   });
 
   it("parses module division", () => {
+    expect(parse("1 % 1").print()).toBe("1 % 1");
     expect(parse("1 % 1").toString()).toBe("(1 % 1)");
   });
 
-  it("parses exponentiationF", () => {
+  it("parses exponentiation", () => {
+    expect(parse("1 ^ 1").print()).toBe("1^1");
     expect(parse("1 ^ 1").toString()).toBe("(1 ^ 1)");
   });
 
