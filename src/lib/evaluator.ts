@@ -94,12 +94,11 @@ export class Evaluator {
         const right = this.evaluate(node.right);
 
         const expInt = this.tryGetIntegerValue(right);
-
-        if (expInt === 0n) return new Integer(1);
-
         const baseInt = this.tryGetIntegerValue(left);
-        if (baseInt === 1n) return new Integer(1);
 
+        if (expInt === 1n) return left;
+        if (expInt === 0n) return new Integer(1);
+        if (baseInt === 1n) return new Integer(1);
         if (baseInt === 0n) {
           if (
             (right.type === "FRACTION" && right.numerator < 0n) ||
@@ -110,9 +109,12 @@ export class Evaluator {
           return new Integer(0);
         }
 
-        if (expInt === 1n) return left;
-
-        if (isNumerical(left) && expInt !== null) {
+        if (isNumerical(left) && (isNumerical(right) || expInt !== null)) {
+          if (expInt === null) {
+            throw new EvaluatorError(
+              "Fractional and decimal exponents are currently unsupported",
+            );
+          }
           return this.evaluatePower(left, expInt);
         }
 

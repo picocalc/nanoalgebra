@@ -318,6 +318,25 @@ describe("evaluate", () => {
       expect(evaluate("(-1)^2").toString()).toBe("1");
       expect(evaluate("(-1)^3").toString()).toBe("-1");
     });
+
+    it.failing("handles exponentiation to a fractional power", () => {
+      expect(() => evaluate("4^(1/2)").toString()).not.toThrow(EvaluatorError);
+    });
+
+    it.failing(
+      "handles exponentiation of negatives to a fractional power",
+      () => {
+        expect(() => evaluate("(-8)^(1/2)").toString()).not.toThrow(
+          EvaluatorError,
+        );
+        expect(() => evaluate("(-8)^(2/3)").toString()).not.toThrow(
+          EvaluatorError,
+        );
+        expect(() => evaluate("(-8)^(1/3)").toString()).not.toThrow(
+          EvaluatorError,
+        );
+      },
+    );
   });
 
   describe("constants", () => {
