@@ -141,7 +141,7 @@ export class Parser {
     if (token?.type === "MINUS") {
       this.consume(token);
       const operand = this.parseUnary();
-      return new Subtract(new Integer(0), operand);
+      return new Multiply(new Integer(-1), operand);
     }
 
     return this.parseImplicitMul();

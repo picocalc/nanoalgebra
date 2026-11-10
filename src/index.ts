@@ -11,10 +11,10 @@ function parse(expression: string, options?: LexerOptions): TreeNode {
   return new Parser(tokens).parse();
 }
 
-function evaluate(expression: string, options?: LexerOptions): TreeNode {
+function simplify(expression: string, options?: LexerOptions): TreeNode {
   const tree = parse(expression, options);
   const evaluator = new Evaluator();
-  return evaluator.evaluate(tree);
+  return evaluator.simplify(tree);
 }
 
-export { evaluate, parse, tokenize, Parser, Evaluator };
+export { simplify, parse, tokenize, Parser, Evaluator };

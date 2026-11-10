@@ -21,7 +21,7 @@ export class EvaluatorError extends AlgebraError {
 export class Evaluator {
   constructor() {}
 
-  public evaluate(node: TreeNode): TreeNode {
+  public simplify(node: TreeNode): TreeNode {
     switch (node.type) {
       case "INTEGER":
       case "DECIMAL":
@@ -31,8 +31,8 @@ export class Evaluator {
 
       case "ADD":
       case "SUBTRACT": {
-        const left = this.evaluate(node.left);
-        const right = this.evaluate(node.right);
+        const left = this.simplify(node.left);
+        const right = this.simplify(node.right);
 
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericBinary(left, right, node.type);
@@ -51,8 +51,8 @@ export class Evaluator {
       }
 
       case "MULTIPLY": {
-        const left = this.evaluate(node.left);
-        const right = this.evaluate(node.right);
+        const left = this.simplify(node.left);
+        const right = this.simplify(node.right);
 
         if (this.isZero(left) || this.isZero(right)) return new Integer(0);
         if (this.isOne(left)) return right;
@@ -67,8 +67,8 @@ export class Evaluator {
       }
 
       case "DIVIDE": {
-        const left = this.evaluate(node.left);
-        const right = this.evaluate(node.right);
+        const left = this.simplify(node.left);
+        const right = this.simplify(node.right);
 
         if (this.isZero(right)) throw new EvaluatorError("Division by zero");
         if (this.isZero(left)) return new Integer(0);
@@ -82,16 +82,16 @@ export class Evaluator {
       }
 
       case "MOD": {
-        const left = this.evaluate(node.left);
-        const right = this.evaluate(node.right);
+        const left = this.simplify(node.left);
+        const right = this.simplify(node.right);
         if (!isNumerical(left) || !isNumerical(right))
           throw new EvaluatorError("Modulo supported for numbers currently");
         return this.evaluateNumericMod(left, right);
       }
 
       case "POWER": {
-        const left = this.evaluate(node.left);
-        const right = this.evaluate(node.right);
+        const left = this.simplify(node.left);
+        const right = this.simplify(node.right);
 
         const expInt = this.tryGetIntegerValue(right);
         const baseInt = this.tryGetIntegerValue(left);
@@ -264,7 +264,7 @@ export class Evaluator {
     const leftInfo = t1.symbolNode
       ? this.getBaseAndExp(t1.symbolNode)
       : rightInfo
-        ? { base: rightInfo.base, exp: new Integer(0n) }
+        ? { base: rightInfo.base, exp: new Integer(0) }
         : null;
 
     if (
@@ -311,8 +311,8 @@ export class Evaluator {
     if (left.type === "POWER") {
       const innerBase = left.left;
       const innerExp = left.right;
-      const newExp = this.evaluate(new Multiply(innerExp, right));
-      return this.evaluate(new Power(innerBase, newExp));
+      const newExp = this.simplify(new Multiply(innerExp, right));
+      return this.simplify(new Power(innerBase, newExp));
     }
 
     if (left.type === "MULTIPLY" && expInt !== null && expInt !== 0n) {
@@ -320,7 +320,7 @@ export class Evaluator {
       const rTerm = this.extractTerm(left.right);
       if (lTerm.symbolNode === null && rTerm.symbolNode !== null) {
         const newCoeff = this.evaluatePower(lTerm.coeff, expInt);
-        const newPower = this.evaluate(new Power(rTerm.symbolNode, right));
+        const newPower = this.simplify(new Power(rTerm.symbolNode, right));
         if (this.isOne(newCoeff)) return newPower;
         return new Multiply(newCoeff, newPower);
       }
