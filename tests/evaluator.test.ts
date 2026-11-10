@@ -35,11 +35,9 @@ describe("Evaluator", () => {
   });
 
   it.failing("can convert constants to fractions", () => {
-    expect(
-      Evaluator.toFraction(
-        Evaluator.asDecimal(evaluate("pi"), { sigFigs: 3 }),
-      ).print(),
-    ).toBe("3.14");
+    expect(Evaluator.asDecimal(evaluate("pi"), { sigFigs: 3 }).print()).toBe(
+      "3.14",
+    );
   });
 });
 
