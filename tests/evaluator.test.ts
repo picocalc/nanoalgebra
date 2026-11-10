@@ -497,6 +497,7 @@ describe("evaluate", () => {
       expect(evaluate("1/2 * pi").print()).toBe("pi/2");
       expect(evaluate("2/3 * pi").print()).toBe("2pi/3");
       expect(evaluate("pi / 2 * pi").print()).toBe("pi^2/2");
+      expect(evaluate("pi(1/pi)").print()).toBe("1");
     });
 
     it("handles combination of exponentiation and multiplication of constants", () => {
@@ -551,11 +552,9 @@ describe("evaluate", () => {
       expect(evaluate("pi^2 / 2").print()).toBe("pi^2/2");
       expect(evaluate("2pi^2 / 2").print()).toBe("pi^2");
       expect(evaluate("pi^2 / pi").print()).toBe("pi");
+      expect(evaluate("2pi^2 / pi").print()).toBe("2pi");
       expect(evaluate("pi^3 / pi").print()).toBe("pi^2");
       expect(evaluate("pi / pi^2").print()).toBe("pi^-1");
-      expect(evaluate("2pi^2 / pi").print()).toBe("2pi");
-      expect(evaluate("pi(pi / pi^2)").print()).toBe("1");
-      expect(evaluate("pi(2pi / pi^2)").print()).toBe("2");
       expect(evaluate("2pi / pi^2").print()).toBe("2pi^-1");
       expect(evaluate("(1/pi)^-1").print()).toBe("pi");
       expect(evaluate("(2/pi)^-1").print()).toBe("pi/2");
@@ -563,13 +562,22 @@ describe("evaluate", () => {
       expect(evaluate("2 / pi^-1").print()).toBe("2pi");
       expect(evaluate("1 / pi^-2").print()).toBe("pi^2");
       expect(evaluate("2 / pi^-2").print()).toBe("2pi^2");
-      expect(evaluate("pi / pi^-2").print()).toBe("pi^3");
-      expect(evaluate("2pi / pi^-2").print()).toBe("2pi^3");
       expect(evaluate("pi / pi^-1").print()).toBe("pi^2");
       expect(evaluate("2pi / pi^-1").print()).toBe("2pi^2");
+      expect(evaluate("pi / pi^-2").print()).toBe("pi^3");
+      expect(evaluate("2pi / pi^-2").print()).toBe("2pi^3");
       expect(evaluate("pi^-2 / pi^-3").print()).toBe("pi");
       expect(evaluate("pi^-2 / pi").print()).toBe("pi^-3");
       expect(evaluate("(pi/2)^3").print()).toBe("pi^3/8");
+    });
+
+    it("handles combination of exponentiation, division, addition and subtraction of constants", () => {
+      expect(evaluate("pi^-1 + 1/pi").print()).toBe("2pi^-1");
+      expect(evaluate("1/pi + pi^-1").print()).toBe("2pi^-1");
+      expect(evaluate("pi^-1 - 1/pi").print()).toBe("0");
+      expect(evaluate("1/pi - pi^-1").print()).toBe("0");
+      expect(evaluate("pi(pi / pi^2)").print()).toBe("1");
+      expect(evaluate("pi(2pi / pi^2)").print()).toBe("2");
     });
 
     it("handles exponentiation of constants", () => {
