@@ -27,15 +27,20 @@ const PRECEDENCE = {
   SUBTRACT: 1,
 } as const satisfies Record<NodeType, number>;
 
-function getPrecedence(node: TreeNode): number {
-  return PRECEDENCE[node.type];
+function isRightAssociative(node: BinaryNode) {
+  return node.type === "POWER";
 }
 
 function printSelf(self: BinaryNode, operator: string): string {
   const { left, right } = self;
-  const p = getPrecedence(self);
-  const l = getPrecedence(left) < p ? `(${left.print()})` : left.print();
-  const r = getPrecedence(right) < p ? `(${right.print()})` : right.print();
+  const p = PRECEDENCE[self.type];
+
+  const [needParenthesesLeft, needParenthesesRight] = isRightAssociative(self)
+    ? [PRECEDENCE[left.type] <= p, PRECEDENCE[right.type] < p]
+    : [PRECEDENCE[left.type] < p, PRECEDENCE[right.type] <= p];
+
+  const l = needParenthesesLeft ? `(${left.print()})` : left.print();
+  const r = needParenthesesRight ? `(${right.print()})` : right.print();
   return `${l}${operator}${r}`;
 }
 
@@ -137,7 +142,7 @@ export class Add extends BaseNode<"ADD"> {
   }
 
   print(): string {
-    return `${this.left.print()} + ${this.right.print()}`;
+    return printSelf(this, " + ");
   }
   toString(): string {
     return `(${this.left.toString()} + ${this.right.toString()})`;
@@ -153,7 +158,7 @@ export class Subtract extends BaseNode<"SUBTRACT"> {
   }
 
   print(): string {
-    return `${this.left.print()} - ${this.right.print()}`;
+    return printSelf(this, " - ");
   }
   toString(): string {
     return `(${this.left.toString()} - ${this.right.toString()})`;

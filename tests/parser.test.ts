@@ -36,16 +36,23 @@ describe("parse", () => {
   });
 
   it("parses and prints expressions with multiple operators", () => {
+    testPrint("1 + 2 - 3").toMatchInlineSnapshot(`"1 + 2 - 3"`);
+    testPrint("1 + 2 + 3").toMatchInlineSnapshot(`"1 + 2 + 3"`);
+    testPrint("3 - 2 + 1").toMatchInlineSnapshot(`"3 - 2 + 1"`);
     testPrint("1 + 2 * 3").toMatchInlineSnapshot(`"1 + 2 * 3"`);
     testPrint("6 / 3 - 2").toMatchInlineSnapshot(`"6 / 3 - 2"`);
+    testPrint("6 / 3 / 2").toMatchInlineSnapshot(`"6 / 3 / 2"`);
   });
 
   it("parses and prints expressions with parentheses", () => {
+    testPrint("5 - (2 + 2)").toMatchInlineSnapshot(`"5 - (2 + 2)"`);
     testPrint("3(1 + 2)").toMatchInlineSnapshot(`"3 * (1 + 2)"`);
     testPrint("(1 + 2) * (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) * (3 + 4)"`);
     testPrint("(1 + 2) / (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) / (3 + 4)"`);
+    testPrint("24 / (6 / 2)").toMatchInlineSnapshot(`"24 / (6 / 2)"`);
     testPrint("(1 + 2) % (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) % (3 + 4)"`);
     testPrint("(1 + 2) ^ (3 + 4)").toMatchInlineSnapshot(`"(1 + 2)^(3 + 4)"`);
+    testPrint("(2^3)^2").toMatchInlineSnapshot(`"(2^3)^2"`);
   });
 
   it("parses and prints expressions with constants", () => {

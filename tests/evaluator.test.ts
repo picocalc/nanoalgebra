@@ -376,15 +376,11 @@ describe("evaluate", () => {
     it("handles addition and subtraction of constants", () => {
       expect(evaluate("pi + pi").print()).toBe("2pi");
       expect(evaluate("e + e").print()).toBe("2e");
-      expect(evaluate("2pi + 3pi").print()).toBe("5pi");
-      expect(evaluate("2e + 3e").print()).toBe("5e");
       expect(evaluate("pi + 0").print()).toBe("pi");
       expect(evaluate("0 + pi").print()).toBe("pi");
       expect(evaluate("e + 0").print()).toBe("e");
       expect(evaluate("0 + e").print()).toBe("e");
 
-      expect(evaluate("2pi - pi").print()).toBe("pi");
-      expect(evaluate("5e - 3e").print()).toBe("2e");
       expect(evaluate("pi - pi").print()).toBe("0");
       expect(evaluate("e - e").print()).toBe("0");
       expect(evaluate("pi - 0").print()).toBe("pi");
@@ -419,6 +415,30 @@ describe("evaluate", () => {
       expect(evaluate("0/e - pi").print()).toBe("-pi");
     });
 
+    it("handles combination of multiplication and addition and subtraction of constants", () => {
+      expect(evaluate("2pi + 3pi").print()).toBe("5pi");
+      expect(evaluate("2pi + pi").print()).toBe("3pi");
+      expect(evaluate("(pi * 2) + pi").print()).toBe("3pi");
+      expect(evaluate("(pi * 2) + 3pi").print()).toBe("5pi");
+      expect(evaluate("(pi * 2) + (pi * 3)").print()).toBe("5pi");
+      expect(evaluate("pi + 2pi").print()).toBe("3pi");
+      expect(evaluate("pi + (pi * 2)").print()).toBe("3pi");
+      expect(evaluate("5pi - 3pi").print()).toBe("2pi");
+      expect(evaluate("2pi - pi").print()).toBe("pi");
+      expect(evaluate("pi - 2pi").print()).toBe("-pi");
+
+      expect(evaluate("2e + 3e").print()).toBe("5e");
+      expect(evaluate("2e + e").print()).toBe("3e");
+      expect(evaluate("(e * 2) + e").print()).toBe("3e");
+      expect(evaluate("(e * 2) + 3e").print()).toBe("5e");
+      expect(evaluate("(e * 2) + (e * 3)").print()).toBe("5e");
+      expect(evaluate("e + 2e").print()).toBe("3e");
+      expect(evaluate("e + (e * 2)").print()).toBe("3e");
+      expect(evaluate("5e - 3e").print()).toBe("2e");
+      expect(evaluate("2e - e").print()).toBe("e");
+      expect(evaluate("e - 2e").print()).toBe("-e");
+    });
+
     it("handles combination of exponentiation and addition and subtraction of constants", () => {
       expect(evaluate("0 + pi^2").print()).toBe("pi^2");
       expect(evaluate("pi^2 + 0").print()).toBe("pi^2");
@@ -451,7 +471,7 @@ describe("evaluate", () => {
     it("handles combination of division and multiplication of constants", () => {
       expect(evaluate("1/2 * pi").print()).toBe("pi/2");
       expect(evaluate("2/3 * pi").print()).toBe("2pi/3");
-      expect(evaluate("pi/2 * pi").print()).toBe("pi^2/2");
+      expect(evaluate("pi / 2 * pi").print()).toBe("pi^2/2");
     });
 
     it("handles combination of exponentiation and multiplication of constants", () => {
@@ -465,6 +485,9 @@ describe("evaluate", () => {
       expect(evaluate("pi^-2 * pi^3").print()).toBe("pi");
       expect(evaluate("pi^1.5 * pi^1.5").print()).toBe("pi^3");
       expect(evaluate("pi^(-1/3) * pi^(2/3)").print()).toBe("pi^(1/3)");
+      expect(evaluate("(2pi)^3").print()).toBe("8pi^3");
+      expect(evaluate("(pi*2)^3").print()).toBe("8pi^3");
+      expect(evaluate("(2pi^-1)^-1").print()).toBe("pi/2");
     });
 
     it("handles division of constants", () => {
@@ -473,6 +496,7 @@ describe("evaluate", () => {
       expect(evaluate("2pi / 1").print()).toBe("2pi");
       expect(evaluate("2e / 1").print()).toBe("2e");
       expect(evaluate("2pi / 2").print()).toBe("pi");
+      expect(evaluate("(pi * 2) / 2").print()).toBe("pi");
       expect(evaluate("2e / 2").print()).toBe("e");
       expect(evaluate("6pi / 2").print()).toBe("3pi");
       expect(evaluate("6e / 2").print()).toBe("3e");
@@ -480,24 +504,22 @@ describe("evaluate", () => {
       expect(evaluate("e / 2").print()).toBe("e/2");
       expect(evaluate("6pi / 9").print()).toBe("2pi/3");
       expect(evaluate("6e / 9").print()).toBe("2e/3");
-      expect(evaluate("pi / 2pi").print()).toBe("1/2");
-      expect(evaluate("2pi / pi").print()).toBe("2");
 
-      expect(evaluate("pi/pi").print()).toBe("1");
-      expect(evaluate("e/e").print()).toBe("1");
-      expect(evaluate("2pi/2pi").print()).toBe("1");
-      expect(evaluate("2e/2e").print()).toBe("1");
-      expect(evaluate("2pi/pi").print()).toBe("2");
-      expect(evaluate("2e/e").print()).toBe("2");
-      expect(evaluate("pi/2pi").print()).toBe("1/2");
-      expect(evaluate("e/2e").print()).toBe("1/2");
+      expect(evaluate("pi / pi").print()).toBe("1");
+      expect(evaluate("e / e").print()).toBe("1");
+      expect(evaluate("2pi / 2pi").print()).toBe("1");
+      expect(evaluate("2e / 2e").print()).toBe("1");
+      expect(evaluate("2pi / pi").print()).toBe("2");
+      expect(evaluate("2e / e").print()).toBe("2");
+      expect(evaluate("pi / 2pi").print()).toBe("1/2");
+      expect(evaluate("e / 2e").print()).toBe("1/2");
 
       expect(evaluate("pi / e").print()).toBe("pi / e");
       expect(evaluate("e / pi").print()).toBe("e / pi");
       expect(evaluate("2pi / e").print()).toBe("2pi / e");
       expect(evaluate("2e / pi").print()).toBe("2e / pi");
 
-      expect(evaluate("pi/(1/pi)").print()).toBe("pi^2");
+      expect(evaluate("pi / (1/pi)").print()).toBe("pi^2");
     });
 
     it("handles combination of exponentiation and division of constants", () => {
@@ -522,34 +544,40 @@ describe("evaluate", () => {
       expect(evaluate("2pi / pi^-1").print()).toBe("2pi^2");
       expect(evaluate("pi^-2 / pi^-3").print()).toBe("pi");
       expect(evaluate("pi^-2 / pi").print()).toBe("pi^-3");
+      expect(evaluate("(pi/2)^3").print()).toBe("pi^3/8");
     });
 
     it("handles exponentiation of constants", () => {
-      expect(evaluate("pi ^ 0").print()).toBe("1");
-      expect(evaluate("e ^ 0").print()).toBe("1");
-      expect(evaluate("pi ^ 1").print()).toBe("pi");
-      expect(evaluate("e ^ 1").print()).toBe("e");
+      expect(evaluate("pi^0").print()).toBe("1");
+      expect(evaluate("e^0").print()).toBe("1");
+
+      expect(evaluate("pi^1").print()).toBe("pi");
+      expect(evaluate("e^1").print()).toBe("e");
+
+      expect(evaluate("pi^2").print()).toBe("pi^2");
+      expect(evaluate("e^2").print()).toBe("e^2");
 
       expect(evaluate("pi^-1").print()).toBe("pi^-1");
       expect(evaluate("e^-1").print()).toBe("e^-1");
+
       expect(evaluate("pi^-2").print()).toBe("pi^-2");
       expect(evaluate("e^-2").print()).toBe("e^-2");
 
-      expect(evaluate("pi ^ e").print()).toBe("pi^e");
-      expect(evaluate("e ^ pi").print()).toBe("e^pi");
-      expect(evaluate("2 ^ e").print()).toBe("2^e");
-      expect(evaluate("2 ^ pi").print()).toBe("2^pi");
+      expect(evaluate("pi^e").print()).toBe("pi^e");
+      expect(evaluate("e^pi").print()).toBe("e^pi");
+
+      expect(evaluate("2^e").print()).toBe("2^e");
+      expect(evaluate("2^pi").print()).toBe("2^pi");
 
       expect(evaluate("pi^(1/2)").print()).toBe("pi^(1/2)");
       expect(evaluate("pi^(1/2)").toString()).toBe("(pi ^ (1/2))");
       expect(evaluate("pi^(2/3)").print()).toBe("pi^(2/3)");
+
       expect(evaluate("pi^1.5").print()).toBe("pi^1.5");
 
-      expect(evaluate("(2pi)^3").print()).toBe("8pi^3");
       expect(evaluate("(pi^2)^3").print()).toBe("pi^6");
 
       expect(evaluate("(pi^4)^(1/2)").print()).toBe("pi^2");
-      expect(evaluate("(pi / 2)^3").print()).toBe("pi^3/8");
     });
   });
 });

@@ -254,14 +254,10 @@ export class Evaluator {
     const t2 = this.extractTerm(right);
 
     const rightInfo = t2.symbolNode ? this.getBaseAndExp(t2.symbolNode) : null;
-    const rightExpInt = rightInfo
-      ? this.tryGetIntegerValue(rightInfo.exp)
-      : null;
 
     const leftInfo = t1.symbolNode
       ? this.getBaseAndExp(t1.symbolNode)
-      : rightInfo &&
-          (this.isOne(t1.coeff) || (rightExpInt !== null && rightExpInt < 0n))
+      : rightInfo
         ? { base: rightInfo.base, exp: new Integer(0n) }
         : null;
 
@@ -313,7 +309,7 @@ export class Evaluator {
       return this.evaluate(new Power(innerBase, newExp));
     }
 
-    if (left.type === "MULTIPLY" && expInt !== null && expInt > 0n) {
+    if (left.type === "MULTIPLY" && expInt !== null && expInt !== 0n) {
       const lTerm = this.extractTerm(left.left);
       const rTerm = this.extractTerm(left.right);
       if (lTerm.symbolNode === null && rTerm.symbolNode !== null) {
@@ -322,16 +318,6 @@ export class Evaluator {
         if (this.isOne(newCoeff)) return newPower;
         return new Multiply(newCoeff, newPower);
       }
-    }
-
-    if (left.type === "DIVIDE" && expInt !== null && expInt !== 0n) {
-      const newNum = this.evaluate(new Power(left.left, right));
-      const newDen = this.evaluate(new Power(left.right, right));
-      return this.evaluate(new Divide(newNum, newDen));
-    }
-
-    if (left.type === "SYMBOL" && expInt !== null && expInt > 0n) {
-      return new Power(left, new Integer(expInt));
     }
 
     return null;
