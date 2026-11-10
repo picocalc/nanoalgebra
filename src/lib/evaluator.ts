@@ -109,12 +109,18 @@ export class Evaluator {
           return new Integer(0);
         }
 
-        if (isNumerical(left) && (isNumerical(right) || expInt !== null)) {
-          if (expInt === null) {
-            throw new EvaluatorError(
-              "Fractional and decimal exponents are currently unsupported",
-            );
-          }
+        if (
+          expInt === null &&
+          isNumerical(right) &&
+          left.type !== "SYMBOL" &&
+          left.type !== "POWER"
+        ) {
+          throw new EvaluatorError(
+            "Fractional and decimal exponents are currently unsupported",
+          );
+        }
+
+        if (isNumerical(left) && isNumerical(right) && expInt !== null) {
           return this.evaluatePower(left, expInt);
         }
 

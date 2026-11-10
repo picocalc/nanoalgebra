@@ -329,24 +329,51 @@ describe("evaluate", () => {
       expect(evaluate("(-1)^3").print()).toBe("-1");
     });
 
-    it.failing("handles exponentiation to a fractional power", () => {
-      expect(() => evaluate("4^(1/2)").print()).not.toThrow(EvaluatorError);
-    });
-
-    it.failing(
-      "handles exponentiation of negatives to a fractional power",
-      () => {
+    describe("exponentiation to a fractional power", () => {
+      it.failing("", () => {
+        expect(() => evaluate("4^(1/2)").print()).not.toThrow(EvaluatorError);
+      });
+      it.failing("", () => {
+        expect(evaluate("4^(1/2)").print()).toBe("2");
+      });
+      it.failing("", () => {
+        expect(() => evaluate("4^0.5").print()).not.toThrow(EvaluatorError);
+      });
+      it.failing("", () => {
+        expect(evaluate("4^0.5").print()).toBe("2");
+      });
+      it.failing("", () => {
+        expect(() => evaluate("(4x^2)^(1/2)").print()).not.toThrow(
+          EvaluatorError,
+        );
+      });
+      it.failing("", () => {
+        expect(evaluate("(4x^2)^0.5").print()).toBe("2x");
+      });
+      it.failing("", () => {
+        expect(() => evaluate("(4x^2)^0.5").print()).not.toThrow(
+          EvaluatorError,
+        );
+      });
+      it.failing("", () => {
+        expect(evaluate("(4x^2)^(1/2)").print()).toBe("2x");
+      });
+      it.failing("", () => {
         expect(() => evaluate("(-8)^(1/2)").print()).not.toThrow(
           EvaluatorError,
         );
+      });
+      it.failing("", () => {
         expect(() => evaluate("(-8)^(2/3)").print()).not.toThrow(
           EvaluatorError,
         );
+      });
+      it.failing("", () => {
         expect(() => evaluate("(-8)^(1/3)").print()).not.toThrow(
           EvaluatorError,
         );
-      },
-    );
+      });
+    });
   });
 
   describe("constants", () => {
