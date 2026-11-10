@@ -3,35 +3,54 @@ import { describe, it, expect } from "bun:test";
 import { ParserError } from "#lib/parser";
 import { parse } from "#src";
 
+function testPrint(expression: string) {
+  const parsed = parse(expression);
+  const printed = parsed.print();
+  expect(parse(printed).toString()).toBe(parsed.toString());
+  return expect(printed);
+}
+
 describe("parse", () => {
   it("parses addition", () => {
-    expect(parse("1 + 1").print()).toBe("1 + 1");
-    expect(parse("1 + 1").toString()).toBe("(1 + 1)");
+    testPrint("1 + 1").toMatchInlineSnapshot(`"1 + 1"`);
   });
 
   it("parses subtraction", () => {
-    expect(parse("1 - 1").print()).toBe("1 - 1");
-    expect(parse("1 - 1").toString()).toBe("(1 - 1)");
+    testPrint("1 - 1").toMatchInlineSnapshot(`"1 - 1"`);
   });
 
   it("parses multiplication", () => {
-    expect(parse("1 * 1").print()).toBe("1 * 1");
-    expect(parse("1 * 1").toString()).toBe("(1 * 1)");
+    testPrint("1 * 1").toMatchInlineSnapshot(`"1 * 1"`);
   });
 
   it("parses division", () => {
-    expect(parse("1 / 1").print()).toBe("1 / 1");
-    expect(parse("1 / 1").toString()).toBe("(1 / 1)");
+    testPrint("1 / 1").toMatchInlineSnapshot(`"1 / 1"`);
   });
 
   it("parses module division", () => {
-    expect(parse("1 % 1").print()).toBe("1 % 1");
-    expect(parse("1 % 1").toString()).toBe("(1 % 1)");
+    testPrint("1 % 1").toMatchInlineSnapshot(`"1 % 1"`);
   });
 
   it("parses exponentiation", () => {
-    expect(parse("1 ^ 1").print()).toBe("1^1");
-    expect(parse("1 ^ 1").toString()).toBe("(1 ^ 1)");
+    testPrint("1 ^ 1").toMatchInlineSnapshot(`"1^1"`);
+  });
+
+  it("parses and prints expressions with multiple operators", () => {
+    testPrint("1 + 2 * 3").toMatchInlineSnapshot(`"1 + 2 * 3"`);
+    testPrint("6 / 3 - 2").toMatchInlineSnapshot(`"6 / 3 - 2"`);
+  });
+
+  it("parses and prints expressions with parentheses", () => {
+    testPrint("3(1 + 2)").toMatchInlineSnapshot(`"3 * (1 + 2)"`);
+    testPrint("(1 + 2) * (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) * (3 + 4)"`);
+    testPrint("(1 + 2) / (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) / (3 + 4)"`);
+    testPrint("(1 + 2) % (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) % (3 + 4)"`);
+    testPrint("(1 + 2) ^ (3 + 4)").toMatchInlineSnapshot(`"(1 + 2)^(3 + 4)"`);
+  });
+
+  it("parses and prints expressions with constants", () => {
+    testPrint("2pi * e").toMatchInlineSnapshot(`"2pi * e"`);
+    testPrint("pi^(2/3)").toMatchInlineSnapshot(`"pi^(2 / 3)"`);
   });
 
   describe("invalid expressions", () => {

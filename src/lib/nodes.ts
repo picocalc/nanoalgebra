@@ -14,9 +14,33 @@ type NodeType =
   | "MOD"
   | "POWER";
 
+const PRECEDENCE = {
+  INTEGER: 4,
+  DECIMAL: 4,
+  SYMBOL: 4,
+  POWER: 3,
+  MULTIPLY: 2,
+  FRACTION: 2,
+  DIVIDE: 2,
+  MOD: 2,
+  ADD: 1,
+  SUBTRACT: 1,
+} as const satisfies Record<NodeType, number>;
+
+function getPrecedence(node: TreeNode): number {
+  return PRECEDENCE[node.type];
+}
+
+function printSelf(self: BinaryNode, operator: string): string {
+  const { left, right } = self;
+  const p = getPrecedence(self);
+  const l = getPrecedence(left) < p ? `(${left.print()})` : left.print();
+  const r = getPrecedence(right) < p ? `(${right.print()})` : right.print();
+  return `${l}${operator}${r}`;
+}
+
 abstract class BaseNode<T extends NodeType = NodeType> {
   constructor(readonly type: T) {}
-
   abstract print(): string;
   abstract toString(): string;
 }
@@ -146,25 +170,19 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
 
   print(): string {
     const { left, right } = this;
-    if (
-      (right.type === "SYMBOL" || right.type === "POWER") &&
-      left.type === "INTEGER"
-    ) {
-      if (left.value === -1n) {
+    if (right.type === "SYMBOL" || right.type === "POWER") {
+      if (left.type === "INTEGER" && left.value === -1n) {
         return `-${right.print()}`;
       }
-      return `${left.print()}${right.print()}`;
-    }
-    if (
-      (right.type === "SYMBOL" || right.type === "POWER") &&
-      left.type === "FRACTION"
-    ) {
-      if (left.numerator === 1n) {
-        return `${right.print()}/${left.denominator}`;
+      if (left.type === "INTEGER" || left.type === "DECIMAL") {
+        return `${left.print()}${right.print()}`;
       }
-      return `${left.numerator}${right.print()}/${left.denominator}`;
+      if (left.type === "FRACTION") {
+        const coeff = left.numerator === 1n ? "" : `${left.numerator}`;
+        return `${coeff}${right.print()}/${left.denominator}`;
+      }
     }
-    return `${left.print()} * ${right.print()}`;
+    return printSelf(this, " * ");
   }
   toString(): string {
     return `(${this.left.toString()} * ${this.right.toString()})`;
@@ -180,7 +198,7 @@ export class Divide extends BaseNode<"DIVIDE"> {
   }
 
   print(): string {
-    return `${this.left.print()} / ${this.right.print()}`;
+    return printSelf(this, " / ");
   }
   toString(): string {
     return `(${this.left.toString()} / ${this.right.toString()})`;
@@ -198,7 +216,7 @@ export class Modulo extends BaseNode<"MOD"> {
   }
 
   print(): string {
-    return `${this.left.print()} % ${this.right.print()}`;
+    return printSelf(this, " % ");
   }
   toString(): string {
     return `(${this.left.toString()} % ${this.right.toString()})`;
@@ -214,16 +232,7 @@ export class Power extends BaseNode<"POWER"> {
   }
 
   print(): string {
-    const { left, right } = this;
-    if (
-      right.type === "POWER" ||
-      right.type === "SYMBOL" ||
-      right.type === "INTEGER" ||
-      right.type === "DECIMAL"
-    ) {
-      return `${left.print()}^${right.print()}`;
-    }
-    return `${left.print()}^(${right.print()})`;
+    return printSelf(this, "^");
   }
   toString(): string {
     return `(${this.left.toString()} ^ ${this.right.toString()})`;
@@ -253,13 +262,8 @@ export function isNumerical(node: TreeNode): node is NumericalNode {
 
 export type NumericalNode = Integer | Decimal | Fraction;
 
-export type SymbolicNode =
-  | SymbolNode
-  | Add
-  | Subtract
-  | Multiply
-  | Divide
-  | Modulo
-  | Power;
+export type BinaryNode = Add | Subtract | Multiply | Divide | Modulo | Power;
+
+export type SymbolicNode = SymbolNode | BinaryNode;
 
 export type TreeNode = NumericalNode | SymbolicNode;

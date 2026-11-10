@@ -360,6 +360,9 @@ describe("evaluate", () => {
       expect(evaluate("3pi").print()).toBe("3pi");
       expect(evaluate("3e").print()).toBe("3e");
 
+      expect(evaluate("2.5pi").print()).toBe("2.5pi");
+      expect(evaluate("2.5e").print()).toBe("2.5e");
+
       expect(evaluate("+pi").print()).toBe("pi");
       expect(evaluate("+e").print()).toBe("e");
 
