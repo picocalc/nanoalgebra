@@ -28,6 +28,8 @@ describe(".print() and .toString()", () => {
     testPrint("-(2 * (-3)^2)").toMatchInlineSnapshot(`"-(2 * (-3)^2)"`);
     testPrint("-(1 * (-3)^2)").toMatchInlineSnapshot(`"-(1 * (-3)^2)"`);
     testPrint("-(3 * (-1)^2)").toMatchInlineSnapshot(`"-(3 * (-1)^2)"`);
+    testPrint("(-1) * (-pi * 2)").toMatchInlineSnapshot(`"-1 * (-pi * 2)"`);
+    testPrint("(-2) * (-pi * 2)").toMatchInlineSnapshot(`"-2 * (-pi * 2)"`);
   });
 
   it("handles addition", () => {

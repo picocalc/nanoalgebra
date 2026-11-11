@@ -24,8 +24,8 @@ export function isNegative(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value < 0n;
   if (node.type === "DECIMAL") return node.whole < 0n;
   if (node.type === "FRACTION") return node.numerator < 0n;
-  if (node.type === "MULTIPLY") {
-    return node.left.type === "INTEGER" && node.left.value < 0n;
+  if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+    return isNegative(node.left);
   }
   return false;
 }
