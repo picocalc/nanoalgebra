@@ -2,7 +2,7 @@ import { gcd } from "#math/gcd";
 
 import { EvaluatorError } from "./evaluator";
 
-type NodeType =
+type DefinedNodeType =
   | "INTEGER"
   | "DECIMAL"
   | "FRACTION"
@@ -13,6 +13,8 @@ type NodeType =
   | "DIVIDE"
   | "MOD"
   | "POWER";
+
+type NodeType = DefinedNodeType | "UNDEFINED";
 
 const PRECEDENCE = {
   INTEGER: 4,
@@ -25,7 +27,12 @@ const PRECEDENCE = {
   MOD: 2,
   ADD: 1,
   SUBTRACT: 1,
-} as const satisfies Record<NodeType, number>;
+} as const satisfies Record<DefinedNodeType, number>;
+
+function getPrecedence(node: TreeNode) {
+  if (node.type === "UNDEFINED") return getPrecedence(node.node);
+  return PRECEDENCE[node.type];
+}
 
 function isRightAssociative(node: BinaryNode) {
   return node.type === "POWER";
@@ -36,8 +43,8 @@ function printSelf(self: BinaryNode, operator: string): string {
   const p = PRECEDENCE[self.type];
 
   const [needParenthesesLeft, needParenthesesRight] = isRightAssociative(self)
-    ? [PRECEDENCE[left.type] <= p, PRECEDENCE[right.type] < p]
-    : [PRECEDENCE[left.type] < p, PRECEDENCE[right.type] <= p];
+    ? [getPrecedence(left) <= p, getPrecedence(right) < p]
+    : [getPrecedence(left) < p, getPrecedence(right) <= p];
 
   const l = needParenthesesLeft ? `(${left.print()})` : left.print();
   const r = needParenthesesRight ? `(${right.print()})` : right.print();
@@ -48,6 +55,19 @@ abstract class BaseNode<T extends NodeType = NodeType> {
   constructor(readonly type: T) {}
   abstract print(): string;
   abstract toString(): string;
+}
+
+export class Undefined extends BaseNode<"UNDEFINED"> {
+  constructor(readonly node: DefinedNode) {
+    super("UNDEFINED");
+  }
+
+  print(): string {
+    return this.node.print();
+  }
+  toString(): string {
+    return "UNDEFINED";
+  }
 }
 
 export class Integer extends BaseNode<"INTEGER"> {
@@ -175,10 +195,13 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
 
   print(): string {
     const { left, right } = this;
-    if (right.type === "SYMBOL" || right.type === "POWER") {
-      if (left.type === "INTEGER" && left.value === -1n) {
-        return `-${right.print()}`;
-      }
+    if (left.type === "INTEGER" && left.value === -1n) {
+      return `-${right.print()}`;
+    }
+    if (
+      right.type === "SYMBOL" ||
+      (right.type === "POWER" && right.left.type === "SYMBOL")
+    ) {
       if (left.type === "INTEGER" || left.type === "DECIMAL") {
         return `${left.print()}${right.print()}`;
       }
@@ -211,13 +234,11 @@ export class Divide extends BaseNode<"DIVIDE"> {
 }
 
 export class Modulo extends BaseNode<"MOD"> {
-  readonly left: TreeNode;
-  readonly right: TreeNode;
-
-  constructor(left: TreeNode, right: TreeNode) {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
     super("MOD");
-    this.left = left;
-    this.right = right;
   }
 
   print(): string {
@@ -271,4 +292,6 @@ export type BinaryNode = Add | Subtract | Multiply | Divide | Modulo | Power;
 
 export type SymbolicNode = SymbolNode | BinaryNode;
 
-export type TreeNode = NumericalNode | SymbolicNode;
+export type DefinedNode = NumericalNode | SymbolicNode;
+
+export type TreeNode = DefinedNode | Undefined;

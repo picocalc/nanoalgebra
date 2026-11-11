@@ -1,5 +1,10 @@
 import { AlgebraError } from "./errors";
-import type { NumericalNode, SymbolicNode, TreeNode } from "./nodes";
+import type {
+  NumericalNode,
+  SymbolicNode,
+  DefinedNode,
+  TreeNode,
+} from "./nodes";
 import {
   Add,
   Decimal,
@@ -7,9 +12,11 @@ import {
   Fraction,
   Integer,
   isNumerical,
+  Modulo,
   Multiply,
   Power,
   Subtract,
+  Undefined,
 } from "./nodes";
 
 export class EvaluatorError extends AlgebraError {
@@ -27,12 +34,21 @@ export class Evaluator {
       case "DECIMAL":
       case "FRACTION":
       case "SYMBOL":
+      case "UNDEFINED":
         return node;
 
       case "ADD":
       case "SUBTRACT": {
         const left = this.simplify(node.left);
         const right = this.simplify(node.right);
+
+        const simplified =
+          node.type === "ADD"
+            ? new Add(left, right)
+            : new Subtract(left, right);
+
+        if (left.type === "UNDEFINED" || right.type === "UNDEFINED")
+          return new Undefined(simplified);
 
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericBinary(left, right, node.type);
@@ -45,32 +61,33 @@ export class Evaluator {
           return node.type === "ADD" ? right : this.negate(right);
         if (this.isZero(right)) return left;
 
-        return node.type === "ADD"
-          ? new Add(left, right)
-          : new Subtract(left, right);
+        return simplified;
       }
 
       case "MULTIPLY": {
         const left = this.simplify(node.left);
         const right = this.simplify(node.right);
-
-        if (this.isZero(left) || this.isZero(right)) return new Integer(0);
+        const simplified = new Multiply(left, right);
+        if (left.type === "UNDEFINED" || right.type === "UNDEFINED")
+          return new Undefined(simplified);
         if (this.isOne(left)) return right;
         if (this.isOne(right)) return left;
-
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericMultiply(left, right);
         }
-
-        const simplified = this.tryMultiplySymbolic(left, right);
-        return simplified ?? new Multiply(left, right);
+        return this.tryMultiplySymbolic(left, right) ?? simplified;
       }
 
       case "DIVIDE": {
         const left = this.simplify(node.left);
         const right = this.simplify(node.right);
-
-        if (this.isZero(right)) throw new EvaluatorError("Division by zero");
+        const simplified = new Divide(left, right);
+        if (
+          left.type === "UNDEFINED" ||
+          right.type === "UNDEFINED" ||
+          this.isZero(right)
+        )
+          return new Undefined(simplified);
         if (this.isZero(left)) return new Integer(0);
         if (this.isOne(right)) return left;
 
@@ -78,20 +95,30 @@ export class Evaluator {
           return this.evaluateNumericDivide(left, right);
         }
 
-        return this.tryDivideSymbolic(left, right) ?? new Divide(left, right);
+        return this.tryDivideSymbolic(left, right) ?? simplified;
       }
 
       case "MOD": {
         const left = this.simplify(node.left);
         const right = this.simplify(node.right);
-        if (!isNumerical(left) || !isNumerical(right))
-          throw new EvaluatorError("Modulo supported for numbers currently");
+        const simplified = new Modulo(left, right);
+        if (
+          left.type === "UNDEFINED" ||
+          right.type === "UNDEFINED" ||
+          this.isZero(right)
+        )
+          return new Undefined(simplified);
+        if (this.isZero(left)) return new Integer(0);
+        if (!isNumerical(left) || !isNumerical(right)) return simplified;
         return this.evaluateNumericMod(left, right);
       }
 
       case "POWER": {
         const left = this.simplify(node.left);
         const right = this.simplify(node.right);
+        const simplified = new Power(left, right);
+        if (left.type === "UNDEFINED" || right.type === "UNDEFINED")
+          return new Undefined(simplified);
 
         const expInt = this.tryGetIntegerValue(right);
         const baseInt = this.tryGetIntegerValue(left);
@@ -104,28 +131,16 @@ export class Evaluator {
             (right.type === "FRACTION" && right.numerator < 0n) ||
             (expInt !== null && expInt < 0n)
           ) {
-            throw new EvaluatorError("Division by zero in power expression");
+            return new Undefined(simplified);
           }
           return new Integer(0);
-        }
-
-        if (
-          expInt === null &&
-          isNumerical(right) &&
-          left.type !== "SYMBOL" &&
-          left.type !== "POWER"
-        ) {
-          throw new EvaluatorError(
-            "Fractional and decimal exponents are currently unsupported",
-          );
         }
 
         if (isNumerical(left) && isNumerical(right) && expInt !== null) {
           return this.evaluatePower(left, expInt);
         }
 
-        const simplified = this.tryExponentiateSymbolic(left, right, expInt);
-        return simplified ?? new Power(left, right);
+        return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
       }
     }
   }
@@ -138,7 +153,7 @@ export class Evaluator {
     return this.tryGetIntegerValue(node) === 1n;
   }
 
-  private negate(node: TreeNode): TreeNode {
+  private negate(node: DefinedNode): DefinedNode {
     return new Multiply(new Integer(-1), node);
   }
 
@@ -146,7 +161,7 @@ export class Evaluator {
     node: TreeNode,
   ):
     | { coeff: NumericalNode; symbolNode: SymbolicNode | null }
-    | { coeff: Integer; symbolNode: SymbolicNode } {
+    | { coeff: Integer; symbolNode: TreeNode } {
     if (isNumerical(node)) {
       return { coeff: node, symbolNode: null };
     }
@@ -161,8 +176,8 @@ export class Evaluator {
   }
 
   private tryCombineTerms(
-    left: TreeNode,
-    right: TreeNode,
+    left: DefinedNode,
+    right: DefinedNode,
     op: "ADD" | "SUBTRACT",
   ): TreeNode | null {
     const t1 = this.extractTerm(left);
@@ -188,7 +203,7 @@ export class Evaluator {
   }
 
   private getBaseAndExp(
-    node: SymbolicNode,
+    node: TreeNode,
   ): { base: TreeNode; exp: NumericalNode } | null {
     if (node.type === "SYMBOL") {
       return { base: node, exp: new Integer(1) };
@@ -200,21 +215,23 @@ export class Evaluator {
   }
 
   private tryMultiplySymbolic(
-    left: TreeNode,
-    right: TreeNode,
+    left: DefinedNode,
+    right: DefinedNode,
   ): TreeNode | null {
     const t1 = this.extractTerm(left);
     const t2 = this.extractTerm(right);
 
     if (t1.symbolNode === null && t2.symbolNode !== null) {
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-      if (this.isZero(combinedCoeff)) return new Integer(0);
+      if (this.isZero(combinedCoeff) && t2.symbolNode.type === "SYMBOL")
+        return new Integer(0);
       if (this.isOne(combinedCoeff)) return t2.symbolNode;
       return new Multiply(combinedCoeff, t2.symbolNode);
     }
     if (t2.symbolNode === null && t1.symbolNode !== null) {
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-      if (this.isZero(combinedCoeff)) return new Integer(0);
+      if (this.isZero(combinedCoeff) && t1.symbolNode.type === "SYMBOL")
+        return new Integer(0);
       if (this.isOne(combinedCoeff)) return t1.symbolNode;
       return new Multiply(combinedCoeff, t1.symbolNode);
     }
@@ -238,14 +255,11 @@ export class Evaluator {
       );
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
 
-      let result: TreeNode;
-      if (this.isZero(totalExp)) {
-        result = new Integer(1);
-      } else if (this.isOne(totalExp)) {
-        result = leftInfo.base;
-      } else {
-        result = new Power(leftInfo.base, totalExp);
-      }
+      const result = this.isZero(totalExp)
+        ? new Integer(1)
+        : this.isOne(totalExp)
+          ? leftInfo.base
+          : new Power(leftInfo.base, totalExp);
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
@@ -255,7 +269,10 @@ export class Evaluator {
     return null;
   }
 
-  private tryDivideSymbolic(left: TreeNode, right: TreeNode): TreeNode | null {
+  private tryDivideSymbolic(
+    left: DefinedNode,
+    right: DefinedNode,
+  ): TreeNode | null {
     const t1 = this.extractTerm(left);
     const t2 = this.extractTerm(right);
 
@@ -279,14 +296,11 @@ export class Evaluator {
       );
       const combinedCoeff = this.evaluateNumericDivide(t1.coeff, t2.coeff);
 
-      let result: TreeNode;
-      if (this.isZero(totalExp)) {
-        result = new Integer(1);
-      } else if (this.isOne(totalExp)) {
-        result = leftInfo.base;
-      } else {
-        result = new Power(leftInfo.base, totalExp);
-      }
+      const result = this.isZero(totalExp)
+        ? new Integer(1)
+        : this.isOne(totalExp)
+          ? leftInfo.base
+          : new Power(leftInfo.base, totalExp);
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
@@ -304,8 +318,8 @@ export class Evaluator {
   }
 
   private tryExponentiateSymbolic(
-    left: TreeNode,
-    right: TreeNode,
+    left: DefinedNode,
+    right: DefinedNode,
     expInt: bigint | null,
   ): TreeNode | null {
     if (left.type === "POWER") {
@@ -404,7 +418,6 @@ export class Evaluator {
     if (left.type === "FRACTION" || right.type === "FRACTION") {
       const a = Evaluator.toFraction(left);
       const b = Evaluator.toFraction(right);
-      if (b.numerator === 0n) throw new EvaluatorError("Modulo by zero");
 
       const q = a.denominator * b.denominator;
       const n1 = a.numerator * (q / a.denominator);
@@ -415,11 +428,6 @@ export class Evaluator {
     }
 
     const f2 = Evaluator.toDecimal(right);
-
-    if (f2.whole === 0n) {
-      throw new EvaluatorError("Modulo by zero");
-    }
-
     const f1 = Evaluator.toDecimal(left);
 
     const e1 = f1.exponent;
@@ -538,13 +546,12 @@ export class Evaluator {
     }
 
     let coeff = 0n;
-    let currentNum = num;
     const targetDigits = BigInt(sigFigs);
     const totalDigitsToGen = targetDigits + 1n;
 
     for (let i = 0n; i < totalDigitsToGen; i++) {
-      coeff = coeff * 10n + currentNum / den;
-      currentNum = (currentNum % den) * 10n;
+      coeff = coeff * 10n + num / den;
+      num = (num % den) * 10n;
     }
 
     const extraDigit = coeff % 10n;

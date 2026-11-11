@@ -11,6 +11,10 @@ function testPrint(expression: string) {
 }
 
 describe("parse", () => {
+  it("parses negative number", () => {
+    testPrint("-1").toMatchInlineSnapshot(`"-1"`);
+  });
+
   it("parses addition", () => {
     testPrint("1 + 1").toMatchInlineSnapshot(`"1 + 1"`);
   });
@@ -53,6 +57,7 @@ describe("parse", () => {
     testPrint("(1 + 2) % (3 + 4)").toMatchInlineSnapshot(`"(1 + 2) % (3 + 4)"`);
     testPrint("(1 + 2) ^ (3 + 4)").toMatchInlineSnapshot(`"(1 + 2)^(3 + 4)"`);
     testPrint("(2^3)^2").toMatchInlineSnapshot(`"(2^3)^2"`);
+    testPrint("(2 / 3)^2").toMatchInlineSnapshot(`"(2 / 3)^2"`);
   });
 
   it("parses and prints expressions with constants", () => {

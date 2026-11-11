@@ -1,7 +1,17 @@
 import { describe, it, expect } from "bun:test";
 
-import { Evaluator, EvaluatorError } from "#lib/evaluator";
+import { Evaluator } from "#lib/evaluator";
 import { simplify } from "#src";
+
+function expectUndefined(expression: string) {
+  const simplified = simplify(expression);
+  expect(simplified.toString()).toBe("UNDEFINED");
+  const printed = simplified.print();
+  const doubleSimplified = simplify(printed);
+  expect(doubleSimplified.toString()).toBe("UNDEFINED");
+  expect(doubleSimplified.print()).toBe(printed);
+  return expect(printed);
+}
 
 describe("Evaluator", () => {
   it("can convert numbers to decimals", () => {
@@ -214,14 +224,24 @@ describe("evaluate", () => {
     });
 
     it("handles division by 0", () => {
-      expect(() => simplify("1/0")).toThrow(EvaluatorError);
-      expect(() => simplify("0/0")).toThrow(EvaluatorError);
-      expect(() => simplify("0 * 1/0")).toThrow(EvaluatorError);
-      expect(() => simplify("1/0 * 0")).toThrow(EvaluatorError);
-      expect(() => simplify("(1/0)^-1")).toThrow(EvaluatorError);
-      expect(() => simplify("0^-1")).toThrow(EvaluatorError);
-      expect(() => simplify("0^(-2/3)")).toThrow(EvaluatorError);
-      expect(() => simplify("1 % 0")).toThrow(EvaluatorError);
+      expectUndefined("1/0").toMatchInlineSnapshot(`"1 / 0"`);
+      expectUndefined("0(1/0)").toMatchInlineSnapshot(`"0 * (1 / 0)"`);
+      expectUndefined("0/0").toMatchInlineSnapshot(`"0 / 0"`);
+      expectUndefined("0(0/0)").toMatchInlineSnapshot(`"0 * (0 / 0)"`);
+      expectUndefined("0 + 0/0").toMatchInlineSnapshot(`"0 + 0 / 0"`);
+      expectUndefined("0 * 1/0").toMatchInlineSnapshot(`"0 / 0"`);
+      expectUndefined("1/0 * 0").toMatchInlineSnapshot(`"1 / 0 * 0"`);
+      expectUndefined("(1/0)^-1").toMatchInlineSnapshot(`"(1 / 0)^-1"`);
+      expectUndefined("0^-1").toMatchInlineSnapshot(`"0^-1"`);
+      expectUndefined("(1/0)^0").toMatchInlineSnapshot(`"(1 / 0)^0"`);
+      expectUndefined("1^(1/0)").toMatchInlineSnapshot(`"1^(1 / 0)"`);
+      expectUndefined("0^(1/0)").toMatchInlineSnapshot(`"0^(1 / 0)"`);
+      expectUndefined("0(0^-1)").toMatchInlineSnapshot(`"0 * 0^-1"`);
+      expectUndefined("0^(-2/3)").toMatchInlineSnapshot(`"0^(-2/3)"`);
+      expectUndefined("1 % 0").toMatchInlineSnapshot(`"1 % 0"`);
+      expectUndefined("0(1 % 0)").toMatchInlineSnapshot(`"0 * (1 % 0)"`);
+      expectUndefined("0 % 0").toMatchInlineSnapshot(`"0 % 0"`);
+      expectUndefined("0(0 % 0)").toMatchInlineSnapshot(`"0 * (0 % 0)"`);
     });
 
     it("handles division of 0", () => {
@@ -254,6 +274,13 @@ describe("evaluate", () => {
 
     it("handles modulo with fractions", () => {
       expect(simplify("(5/6) % (2/7)").print()).toBe("11/42");
+    });
+
+    it("handles modulo with constants", () => {
+      expect(simplify("0 % e").print()).toBe("0");
+      expect(simplify("0 % pi").print()).toBe("0");
+      expect(simplify("pi % e").print()).toBe("pi % e");
+      expect(simplify("e % pi").print()).toBe("e % pi");
     });
   });
 
@@ -327,50 +354,11 @@ describe("evaluate", () => {
       expect(simplify("(-1)^3").print()).toBe("-1");
     });
 
-    describe("exponentiation to a fractional power", () => {
-      it.failing("", () => {
-        expect(() => simplify("4^(1/2)").print()).not.toThrow(EvaluatorError);
-      });
-      it.failing("", () => {
-        expect(simplify("4^(1/2)").print()).toBe("2");
-      });
-      it.failing("", () => {
-        expect(() => simplify("4^0.5").print()).not.toThrow(EvaluatorError);
-      });
-      it.failing("", () => {
-        expect(simplify("4^0.5").print()).toBe("2");
-      });
-      it.failing("", () => {
-        expect(() => simplify("(4x^2)^(1/2)").print()).not.toThrow(
-          EvaluatorError,
-        );
-      });
-      it.failing("", () => {
-        expect(simplify("(4x^2)^0.5").print()).toBe("2x");
-      });
-      it.failing("", () => {
-        expect(() => simplify("(4x^2)^0.5").print()).not.toThrow(
-          EvaluatorError,
-        );
-      });
-      it.failing("", () => {
-        expect(simplify("(4x^2)^(1/2)").print()).toBe("2x");
-      });
-      it.failing("", () => {
-        expect(() => simplify("(-8)^(1/2)").print()).not.toThrow(
-          EvaluatorError,
-        );
-      });
-      it.failing("", () => {
-        expect(() => simplify("(-8)^(2/3)").print()).not.toThrow(
-          EvaluatorError,
-        );
-      });
-      it.failing("", () => {
-        expect(() => simplify("(-8)^(1/3)").print()).not.toThrow(
-          EvaluatorError,
-        );
-      });
+    it.failing("handles exponentiation to a fractional power", () => {
+      expect(simplify("4^(1/2)").print()).toBe("2");
+      expect(simplify("4^0.5").print()).toBe("2");
+      expect(simplify("(4x^2)^(1/2)").print()).toBe("2x");
+      expect(simplify("(4x^2)^0.5").print()).toBe("2x");
     });
   });
 

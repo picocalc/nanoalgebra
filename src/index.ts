@@ -1,12 +1,12 @@
 import { Evaluator } from "#lib/evaluator";
 import type { LexerOptions } from "#lib/lexer";
 import { tokenize } from "#lib/lexer";
-import type { TreeNode } from "#lib/nodes";
+import type { DefinedNode, TreeNode } from "#lib/nodes";
 import { Parser } from "#lib/parser";
 
 export { AlgebraError } from "#lib/errors";
 
-function parse(expression: string, options?: LexerOptions): TreeNode {
+function parse(expression: string, options?: LexerOptions): DefinedNode {
   const tokens = tokenize(expression, options);
   return new Parser(tokens).parse();
 }
