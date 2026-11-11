@@ -183,9 +183,20 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
 
   print(): string {
     const { left, right } = this;
-    if (left.type === "INTEGER" && left.value === -1n) {
+    if (
+      left.type === "INTEGER" &&
+      left.value === -1n &&
+      right.type !== "INTEGER" &&
+      right.type !== "DECIMAL" &&
+      !isNegative(right)
+    ) {
       const needsParens =
-        getPrecedence(right) < getPrecedence(this) || right.type === "DIVIDE";
+        getPrecedence(right) < getPrecedence(this) ||
+        right.type === "DIVIDE" ||
+        right.type === "MOD" ||
+        (right.type === "MULTIPLY" &&
+          right.right.type !== "SYMBOL" &&
+          right.right.type !== "POWER");
       const r = needsParens ? `(${right.print()})` : right.print();
       return `-${r}`;
     }

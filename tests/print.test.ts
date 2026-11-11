@@ -16,9 +16,11 @@ describe(".print() and .toString()", () => {
     testPrint("-1").toMatchInlineSnapshot(`"-1"`);
     testPrint("-2.5").toMatchInlineSnapshot(`"-2.5"`);
     testPrint("-pi").toMatchInlineSnapshot(`"-pi"`);
-    testPrint("-(1 + 1)").toMatchInlineSnapshot(`"-(1 + 1)"`);
-    testPrint("-(pi + e) / pi").toMatchInlineSnapshot(`"-(pi + e) / pi"`);
+    testPrint("-(2 + 3)").toMatchInlineSnapshot(`"-(2 + 3)"`);
+    testPrint("-(2 - 3)").toMatchInlineSnapshot(`"-(2 - 3)"`);
     testPrint("-(2 / 3)").toMatchInlineSnapshot(`"-(2 / 3)"`);
+    testPrint("-(2 * 3)").toMatchInlineSnapshot(`"-(2 * 3)"`);
+    testPrint("-(2 % 3)").toMatchInlineSnapshot(`"-(2 % 3)"`);
     testPrint("(-1)^pi").toMatchInlineSnapshot(`"(-1)^pi"`);
     testPrint("(-2.5e)^pi").toMatchInlineSnapshot(`"(-2.5e)^pi"`);
   });
