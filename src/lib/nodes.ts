@@ -184,7 +184,8 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
   print(): string {
     const { left, right } = this;
     if (left.type === "INTEGER" && left.value === -1n) {
-      const needsParens = getPrecedence(right) < getPrecedence(this);
+      const needsParens =
+        getPrecedence(right) < getPrecedence(this) || right.type === "DIVIDE";
       const r = needsParens ? `(${right.print()})` : right.print();
       return `-${r}`;
     }

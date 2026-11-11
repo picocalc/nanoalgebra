@@ -15,8 +15,12 @@ describe(".print() and .toString()", () => {
   it("handles unary negation", () => {
     testPrint("-1").toMatchInlineSnapshot(`"-1"`);
     testPrint("-2.5").toMatchInlineSnapshot(`"-2.5"`);
-    testPrint("-(1 + 1)").toMatchInlineSnapshot(`"-(1 + 1)"`);
     testPrint("-pi").toMatchInlineSnapshot(`"-pi"`);
+    testPrint("-(1 + 1)").toMatchInlineSnapshot(`"-(1 + 1)"`);
+    testPrint("-(pi + e) / pi").toMatchInlineSnapshot(`"-(pi + e) / pi"`);
+    testPrint("-(2 / 3)").toMatchInlineSnapshot(`"-(2 / 3)"`);
+    testPrint("(-1)^pi").toMatchInlineSnapshot(`"(-1)^pi"`);
+    testPrint("(-2.5e)^pi").toMatchInlineSnapshot(`"(-2.5e)^pi"`);
   });
 
   it("handles addition", () => {
@@ -62,9 +66,6 @@ describe(".print() and .toString()", () => {
     testPrint("(1 + 2) ^ (3 + 4)").toMatchInlineSnapshot(`"(1 + 2)^(3 + 4)"`);
     testPrint("(2^3)^2").toMatchInlineSnapshot(`"(2^3)^2"`);
     testPrint("(2 / 3)^2").toMatchInlineSnapshot(`"(2 / 3)^2"`);
-    testPrint("-(pi + e) / pi").toMatchInlineSnapshot(`"-(pi + e) / pi"`);
-    testPrint("(-1)^pi").toMatchInlineSnapshot(`"(-1)^pi"`);
-    testPrint("(-2.5e)^pi").toMatchInlineSnapshot(`"(-2.5e)^pi"`);
   });
 
   it("handles expressions with constants", () => {
