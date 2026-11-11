@@ -38,12 +38,23 @@ function isRightAssociative(node: BinaryNode) {
   return node.type === "POWER";
 }
 
+function isNegative(node: TreeNode): boolean {
+  if (node.type === "UNDEFINED") return isNegative(node.node);
+  if (node.type === "INTEGER") return node.value < 0n;
+  if (node.type === "DECIMAL") return node.whole < 0n;
+  if (node.type === "FRACTION") return node.numerator < 0n;
+  if (node.type === "MULTIPLY") {
+    return node.left.type === "INTEGER" && node.left.value < 0n;
+  }
+  return false;
+}
+
 function printSelf(self: BinaryNode, operator: string): string {
   const { left, right } = self;
   const p = PRECEDENCE[self.type];
 
   const [needParenthesesLeft, needParenthesesRight] = isRightAssociative(self)
-    ? [getPrecedence(left) <= p, getPrecedence(right) < p]
+    ? [isNegative(left) || getPrecedence(left) <= p, getPrecedence(right) < p]
     : [getPrecedence(left) < p, getPrecedence(right) <= p];
 
   const l = needParenthesesLeft ? `(${left.print()})` : left.print();
@@ -79,10 +90,11 @@ export class Integer extends BaseNode<"INTEGER"> {
   }
 
   print(): string {
-    return this.toString();
+    return this.value.toString();
   }
   toString(): string {
-    return this.value.toString();
+    const s = this.print();
+    return isNegative(this) ? `(${s})` : s;
   }
 }
 
@@ -95,33 +107,19 @@ export class Decimal extends BaseNode<"DECIMAL"> {
   }
 
   print(): string {
-    return this.toString();
+    const { whole, exponent } = this;
+    const exp = Number(exponent);
+    if (exp >= 0) return whole.toString() + "0".repeat(exp);
+    const isNegative = whole < 0n;
+    const s = (isNegative ? -whole : whole).toString();
+    const padded = s.padStart(1 - exp, "0");
+    const cut = padded.length + exp;
+    const result = `${padded.slice(0, cut)}.${padded.slice(cut)}`;
+    return isNegative ? `-${result}` : result;
   }
   toString(): string {
-    let s = this.whole.toString();
-    const isNegative = s.startsWith("-");
-    if (isNegative) {
-      s = s.slice(1);
-    }
-
-    const exp = Number(this.exponent);
-    let result: string;
-
-    if (exp === 0) {
-      result = s;
-    } else if (exp > 0) {
-      result = s + "0".repeat(exp);
-    } else {
-      const absExp = -exp;
-      if (s.length <= absExp) {
-        result = `0.${s.padStart(absExp, "0")}`;
-      } else {
-        const idx = s.length - absExp;
-        result = `${s.slice(0, idx)}.${s.slice(idx)}`;
-      }
-    }
-
-    return isNegative ? `-${result}` : result;
+    const s = this.print();
+    return isNegative(this) ? `(${s})` : s;
   }
 }
 
@@ -196,7 +194,9 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
   print(): string {
     const { left, right } = this;
     if (left.type === "INTEGER" && left.value === -1n) {
-      return `-${right.print()}`;
+      const needsParens = getPrecedence(right) < getPrecedence(this);
+      const r = needsParens ? `(${right.print()})` : right.print();
+      return `-${r}`;
     }
     if (
       right.type === "SYMBOL" ||

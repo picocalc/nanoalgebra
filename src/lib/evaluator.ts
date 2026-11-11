@@ -18,6 +18,7 @@ import {
   Subtract,
   Undefined,
 } from "./nodes";
+import { negate } from "./parser";
 
 export class EvaluatorError extends AlgebraError {
   constructor(message: string) {
@@ -58,7 +59,7 @@ export class Evaluator {
         if (combined !== null) return combined;
 
         if (this.isZero(left))
-          return node.type === "ADD" ? right : this.negate(right);
+          return node.type === "ADD" ? right : negate(right);
         if (this.isZero(right)) return left;
 
         return simplified;
@@ -151,10 +152,6 @@ export class Evaluator {
 
   private isOne(node: TreeNode): boolean {
     return this.tryGetIntegerValue(node) === 1n;
-  }
-
-  private negate(node: DefinedNode): DefinedNode {
-    return new Multiply(new Integer(-1), node);
   }
 
   private extractTerm(

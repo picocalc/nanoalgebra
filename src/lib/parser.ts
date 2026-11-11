@@ -20,6 +20,12 @@ export class ParserError extends AlgebraError {
   }
 }
 
+export function negate(node: DefinedNode): DefinedNode {
+  if (node.type === "INTEGER") return new Integer(-node.value);
+  if (node.type === "DECIMAL") return new Decimal(-node.whole, node.exponent);
+  return new Multiply(new Integer(-1), node);
+}
+
 export class Parser {
   private current: number = 0;
 
@@ -110,17 +116,20 @@ export class Parser {
     return left;
   }
 
-  private parseImplicitMul(): DefinedNode {
+  private parseImplicitMul(prev?: Token): DefinedNode {
     let left = this.parseExponent();
 
     let token;
     while ((token = this.peek())) {
-      if (
-        token.type === "NUMBER" ||
+      const canImplicitMultiply =
         token.type === "LPAREN" ||
-        token.type === "IDENTIFIER"
-      ) {
+        token.type === "IDENTIFIER" ||
+        (token.type === "NUMBER" &&
+          (prev?.type === "RPAREN" || prev?.type === "LPAREN"));
+
+      if (canImplicitMultiply) {
         const right = this.parseExponent();
+        prev = undefined;
         left = new Multiply(left, right);
       } else {
         break;
@@ -140,11 +149,10 @@ export class Parser {
 
     if (token?.type === "MINUS") {
       this.consume(token);
-      const operand = this.parseUnary();
-      return new Multiply(new Integer(-1), operand);
+      return negate(this.parseUnary());
     }
 
-    return this.parseImplicitMul();
+    return this.parseImplicitMul(token);
   }
 
   private parseTerm(): DefinedNode {
