@@ -195,8 +195,12 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
         right.type === "DIVIDE" ||
         right.type === "MOD" ||
         (right.type === "MULTIPLY" &&
-          right.right.type !== "SYMBOL" &&
-          right.right.type !== "POWER");
+          !(
+            isNumerical(right.left) &&
+            (right.right.type === "SYMBOL" ||
+              (right.right.type === "POWER" &&
+                right.right.left.type === "SYMBOL"))
+          ));
       const r = needsParens ? `(${right.print()})` : right.print();
       return `-${r}`;
     }

@@ -23,6 +23,11 @@ describe(".print() and .toString()", () => {
     testPrint("-(2 % 3)").toMatchInlineSnapshot(`"-(2 % 3)"`);
     testPrint("(-1)^pi").toMatchInlineSnapshot(`"(-1)^pi"`);
     testPrint("(-2.5e)^pi").toMatchInlineSnapshot(`"(-2.5e)^pi"`);
+    testPrint("-(2 % 3 * pi)").toMatchInlineSnapshot(`"-(2 % 3 * pi)"`);
+    testPrint("-(1 * (-1)^2)").toMatchInlineSnapshot(`"-(1 * (-1)^2)"`);
+    testPrint("-(2 * (-3)^2)").toMatchInlineSnapshot(`"-(2 * (-3)^2)"`);
+    testPrint("-(1 * (-3)^2)").toMatchInlineSnapshot(`"-(1 * (-3)^2)"`);
+    testPrint("-(3 * (-1)^2)").toMatchInlineSnapshot(`"-(3 * (-1)^2)"`);
   });
 
   it("handles addition", () => {
