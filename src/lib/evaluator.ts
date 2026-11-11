@@ -18,7 +18,7 @@ import {
   Subtract,
   Undefined,
 } from "./nodes";
-import { negate } from "./parser";
+import { negate } from "./shared";
 
 export class EvaluatorError extends AlgebraError {
   constructor(message: string) {
@@ -59,7 +59,7 @@ export class Evaluator {
         if (combined !== null) return combined;
 
         if (this.isZero(left))
-          return node.type === "ADD" ? right : negate(right);
+          return node.type === "ADD" ? right : this.simplify(negate(right));
         if (this.isZero(right)) return left;
 
         return simplified;

@@ -426,6 +426,9 @@ describe("evaluate", () => {
       expect(simplify("0/e + pi").print()).toBe("pi");
       expect(simplify("0/pi - e").print()).toBe("-e");
       expect(simplify("0/e - pi").print()).toBe("-pi");
+
+      expect(simplify("0 - (-pi)").print()).toBe("pi");
+      expect(simplify("0 - (-e)").print()).toBe("e");
     });
 
     it("handles combination of multiplication and addition and subtraction of constants", () => {

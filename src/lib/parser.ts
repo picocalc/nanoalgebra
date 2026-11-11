@@ -13,17 +13,12 @@ import {
   Subtract,
   SymbolNode,
 } from "./nodes";
+import { negate } from "./shared";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
     super("ParserError", message, pos);
   }
-}
-
-export function negate(node: DefinedNode): DefinedNode {
-  if (node.type === "INTEGER") return new Integer(-node.value);
-  if (node.type === "DECIMAL") return new Decimal(-node.whole, node.exponent);
-  return new Multiply(new Integer(-1), node);
 }
 
 export class Parser {
