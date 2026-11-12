@@ -370,6 +370,7 @@ describe("evaluate", () => {
     it("handles combination of exponentiation to a fractional power, multiplication and division", () => {
       expect(simplify("5 ^ 2.5 * 5 ^ 0.5").print()).toBe("125");
       expect(simplify("5 ^ 2.5 / 5 ^ 0.5").print()).toBe("25");
+      expect(simplify("(2 * 2^0.5) ^ (-2)^2").print()).toBe("64");
     });
 
     it.failing("handles exponentiation to a fractional power", () => {

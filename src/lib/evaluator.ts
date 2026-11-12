@@ -329,7 +329,7 @@ export class Evaluator {
         const newCoeff = this.evaluatePower(lTerm.coeff, expInt);
         const newPower = this.simplify(new Power(rTerm.symbolNode, right));
         if (this.isOne(newCoeff)) return newPower;
-        return new Multiply(newCoeff, newPower);
+        return this.simplify(new Multiply(newCoeff, newPower));
       }
     }
 
