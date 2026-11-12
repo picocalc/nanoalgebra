@@ -376,8 +376,8 @@ describe("evaluate", () => {
     it.failing("handles exponentiation to a fractional power", () => {
       expect(simplify("4^(1/2)").print()).toBe("2");
       expect(simplify("4^0.5").print()).toBe("2");
-      expect(simplify("(4x^2)^(1/2)").print()).toBe("2x");
-      expect(simplify("(4x^2)^0.5").print()).toBe("2x");
+      expect(simplify("(4pi^2)^(1/2)").print()).toBe("2pi");
+      expect(simplify("(4pi^2)^0.5").print()).toBe("2pi");
     });
   });
 
