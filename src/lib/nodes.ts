@@ -188,10 +188,12 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
       left.value === -1n &&
       right.type !== "INTEGER" &&
       right.type !== "DECIMAL" &&
+      right.type !== "UNDEFINED" &&
       !isNegative(right)
     ) {
       const needsParens =
-        getPrecedence(right) < getPrecedence(this) ||
+        right.type === "ADD" ||
+        right.type === "SUBTRACT" ||
         right.type === "DIVIDE" ||
         right.type === "MOD" ||
         (right.type === "MULTIPLY" &&

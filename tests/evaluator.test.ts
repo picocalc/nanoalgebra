@@ -242,6 +242,7 @@ describe("evaluate", () => {
       expectUndefined("0(1 % 0)").toMatchInlineSnapshot(`"0 * (1 % 0)"`);
       expectUndefined("0 % 0").toMatchInlineSnapshot(`"0 % 0"`);
       expectUndefined("0(0 % 0)").toMatchInlineSnapshot(`"0 * (0 % 0)"`);
+      expectUndefined("1 / (0 * pi^2)").toMatchInlineSnapshot(`"1 / 0"`);
     });
 
     it("handles division of 0", () => {
@@ -384,6 +385,12 @@ describe("evaluate", () => {
 
       expect(simplify("0pi").print()).toBe("0");
       expect(simplify("0e").print()).toBe("0");
+
+      expect(simplify("0pi^2").print()).toBe("0");
+      expect(simplify("0e^2").print()).toBe("0");
+
+      expect(simplify("0pi^-1").print()).toBe("0");
+      expect(simplify("0e^-1").print()).toBe("0");
     });
 
     it("handles addition and subtraction of constants", () => {

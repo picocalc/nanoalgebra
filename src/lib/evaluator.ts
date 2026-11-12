@@ -18,7 +18,7 @@ import {
   Subtract,
   Undefined,
 } from "./nodes";
-import { negate } from "./shared";
+import { isZero, negate } from "./shared";
 
 export class EvaluatorError extends AlgebraError {
   constructor(message: string) {
@@ -58,9 +58,9 @@ export class Evaluator {
         const combined = this.tryCombineTerms(left, right, node.type);
         if (combined !== null) return combined;
 
-        if (this.isZero(left))
+        if (isZero(left))
           return node.type === "ADD" ? right : this.simplify(negate(right));
-        if (this.isZero(right)) return left;
+        if (isZero(right)) return left;
 
         return simplified;
       }
@@ -86,10 +86,10 @@ export class Evaluator {
         if (
           left.type === "UNDEFINED" ||
           right.type === "UNDEFINED" ||
-          this.isZero(right)
+          isZero(right)
         )
           return new Undefined(simplified);
-        if (this.isZero(left)) return new Integer(0);
+        if (isZero(left)) return new Integer(0);
         if (this.isOne(right)) return left;
 
         if (isNumerical(left) && isNumerical(right)) {
@@ -106,10 +106,10 @@ export class Evaluator {
         if (
           left.type === "UNDEFINED" ||
           right.type === "UNDEFINED" ||
-          this.isZero(right)
+          isZero(right)
         )
           return new Undefined(simplified);
-        if (this.isZero(left)) return new Integer(0);
+        if (isZero(left)) return new Integer(0);
         if (!isNumerical(left) || !isNumerical(right)) return simplified;
         return this.evaluateNumericMod(left, right);
       }
@@ -144,10 +144,6 @@ export class Evaluator {
         return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
       }
     }
-  }
-
-  private isZero(node: TreeNode): boolean {
-    return this.tryGetIntegerValue(node) === 0n;
   }
 
   private isOne(node: TreeNode): boolean {
@@ -191,7 +187,7 @@ export class Evaluator {
         "ADD",
       );
 
-      if (this.isZero(newCoeff)) return new Integer(0);
+      if (isZero(newCoeff)) return new Integer(0);
       if (this.isOne(newCoeff)) return t1.symbolNode;
       return new Multiply(newCoeff, t1.symbolNode);
     }
@@ -220,15 +216,13 @@ export class Evaluator {
 
     if (t1.symbolNode === null && t2.symbolNode !== null) {
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-      if (this.isZero(combinedCoeff) && t2.symbolNode.type === "SYMBOL")
-        return new Integer(0);
+      if (isZero(combinedCoeff)) return new Integer(0);
       if (this.isOne(combinedCoeff)) return t2.symbolNode;
       return new Multiply(combinedCoeff, t2.symbolNode);
     }
     if (t2.symbolNode === null && t1.symbolNode !== null) {
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-      if (this.isZero(combinedCoeff) && t1.symbolNode.type === "SYMBOL")
-        return new Integer(0);
+      if (isZero(combinedCoeff)) return new Integer(0);
       if (this.isOne(combinedCoeff)) return t1.symbolNode;
       return new Multiply(combinedCoeff, t1.symbolNode);
     }
@@ -252,7 +246,7 @@ export class Evaluator {
       );
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
 
-      const result = this.isZero(totalExp)
+      const result = isZero(totalExp)
         ? new Integer(1)
         : this.isOne(totalExp)
           ? leftInfo.base
@@ -293,7 +287,7 @@ export class Evaluator {
       );
       const combinedCoeff = this.evaluateNumericDivide(t1.coeff, t2.coeff);
 
-      const result = this.isZero(totalExp)
+      const result = isZero(totalExp)
         ? new Integer(1)
         : this.isOne(totalExp)
           ? leftInfo.base
@@ -306,7 +300,7 @@ export class Evaluator {
 
     if (t1.symbolNode && t2.symbolNode === null) {
       const reducedCoeff = this.evaluateNumericDivide(t1.coeff, t2.coeff);
-      if (this.isZero(reducedCoeff)) return new Integer(0);
+      if (isZero(reducedCoeff)) return new Integer(0);
       if (this.isOne(reducedCoeff)) return t1.symbolNode;
       return new Multiply(reducedCoeff, t1.symbolNode);
     }

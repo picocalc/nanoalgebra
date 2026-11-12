@@ -29,3 +29,8 @@ export function isNegative(node: TreeNode): boolean {
   }
   return false;
 }
+
+export function isZero(node: TreeNode): boolean {
+  if (node.type === "INTEGER") return node.value === 0n;
+  return false;
+}
