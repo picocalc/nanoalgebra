@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "nanoalgebra",
+      "dependencies": {
+        "bigint.bitlength": "0.3.0",
+      },
       "devDependencies": {
         "@gameroman/config": "0.3.0",
         "@types/bun": "1.4.4",
@@ -197,6 +200,8 @@
     "@yuku-toolchain/win32-arm64": ["@yuku-toolchain/win32-arm64@0.25.0", "", { "os": "win32", "cpu": "arm64" }, "sha512-VssXbUjyRj1egmSSNwo2NEayMTth0mHBPit9WiYGEnvQyTQSUM0TLix0sJn/mVjJBrwqEKyGYg7dkdWFafNYFw=="],
 
     "@yuku-toolchain/win32-x64": ["@yuku-toolchain/win32-x64@0.25.0", "", { "os": "win32", "cpu": "x64" }, "sha512-drLnLlLtqLni1UPZJ1pKl6PPsdGJoaFGaQsJa1khtjJT+OK5Z71rb+md9fO6KP9eJXjIOJKtW7OgnVlLf91WIw=="],
+
+    "bigint.bitlength": ["bigint.bitlength@0.3.0", "", {}, "sha512-z7OQvZ3iQo1PoBhqaHOR8F/wvfP5NIOdqMKbwFUaj5k6E1RLO4ph98WXJokOj5zUuL2DVuyhZ71VVFle+QC6VQ=="],
 
     "bun-types": ["bun-types@1.4.4", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ=="],
 

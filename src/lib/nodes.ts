@@ -1,11 +1,13 @@
 import { gcd } from "#math/gcd";
 
 import { EvaluatorError } from "./evaluator";
+import { isNegative } from "./shared";
 
-type NodeType =
+type DefinedNodeType =
   | "INTEGER"
   | "DECIMAL"
   | "FRACTION"
+  | "SYMBOL"
   | "ADD"
   | "SUBTRACT"
   | "MULTIPLY"
@@ -13,10 +15,60 @@ type NodeType =
   | "MOD"
   | "POWER";
 
+type NodeType = DefinedNodeType | "UNDEFINED";
+
+const PRECEDENCE = {
+  INTEGER: 4,
+  DECIMAL: 4,
+  SYMBOL: 4,
+  POWER: 3,
+  MULTIPLY: 2,
+  FRACTION: 2,
+  DIVIDE: 2,
+  MOD: 2,
+  ADD: 1,
+  SUBTRACT: 1,
+} as const satisfies Record<DefinedNodeType, number>;
+
+function getPrecedence(node: TreeNode) {
+  if (node.type === "UNDEFINED") return getPrecedence(node.node);
+  return PRECEDENCE[node.type];
+}
+
+function isRightAssociative(node: BinaryNode) {
+  return node.type === "POWER";
+}
+
+function printSelf(self: BinaryNode, operator: string): string {
+  const { left, right } = self;
+  const p = PRECEDENCE[self.type];
+
+  const [needParenthesesLeft, needParenthesesRight] = isRightAssociative(self)
+    ? [isNegative(left) || getPrecedence(left) <= p, getPrecedence(right) < p]
+    : [getPrecedence(left) < p, getPrecedence(right) <= p];
+
+  const l = needParenthesesLeft ? `(${left.print()})` : left.print();
+  const r = needParenthesesRight ? `(${right.print()})` : right.print();
+  return `${l}${operator}${r}`;
+}
+
 abstract class BaseNode<T extends NodeType = NodeType> {
   constructor(readonly type: T) {}
-
+  abstract print(): string;
   abstract toString(): string;
+}
+
+export class Undefined extends BaseNode<"UNDEFINED"> {
+  constructor(readonly node: DefinedNode) {
+    super("UNDEFINED");
+  }
+
+  print(): string {
+    return this.node.print();
+  }
+  toString(): string {
+    return "UNDEFINED";
+  }
 }
 
 export class Integer extends BaseNode<"INTEGER"> {
@@ -27,8 +79,12 @@ export class Integer extends BaseNode<"INTEGER"> {
     this.value = BigInt(value);
   }
 
-  toString(): string {
+  print(): string {
     return this.value.toString();
+  }
+  toString(): string {
+    const s = this.print();
+    return isNegative(this) ? `(${s})` : s;
   }
 }
 
@@ -40,39 +96,28 @@ export class Decimal extends BaseNode<"DECIMAL"> {
     super("DECIMAL");
   }
 
-  toString(): string {
-    let s = this.whole.toString();
-    const isNegative = s.startsWith("-");
-    if (isNegative) {
-      s = s.slice(1);
-    }
-
-    const exp = Number(this.exponent);
-    let result: string;
-
-    if (exp === 0) {
-      result = s;
-    } else if (exp > 0) {
-      result = s + "0".repeat(exp);
-    } else {
-      const absExp = -exp;
-      if (s.length <= absExp) {
-        result = `0.${s.padStart(absExp, "0")}`;
-      } else {
-        const idx = s.length - absExp;
-        result = `${s.slice(0, idx)}.${s.slice(idx)}`;
-      }
-    }
-
+  print(): string {
+    const { whole, exponent } = this;
+    const exp = Number(exponent);
+    if (exp >= 0) return whole.toString() + "0".repeat(exp);
+    const isNegative = whole < 0n;
+    const s = (isNegative ? -whole : whole).toString();
+    const padded = s.padStart(1 - exp, "0");
+    const cut = padded.length + exp;
+    const result = `${padded.slice(0, cut)}.${padded.slice(cut)}`;
     return isNegative ? `-${result}` : result;
+  }
+  toString(): string {
+    const s = this.print();
+    return isNegative(this) ? `(${s})` : s;
   }
 }
 
 export class Fraction extends BaseNode<"FRACTION"> {
-  readonly numerator: bigint;
-  readonly denominator: bigint;
-
-  constructor(numerator: bigint, denominator: bigint) {
+  constructor(
+    readonly numerator: bigint,
+    readonly denominator: bigint,
+  ) {
     super("FRACTION");
     if (denominator === 0n) throw new EvaluatorError("Division by zero");
 
@@ -88,9 +133,11 @@ export class Fraction extends BaseNode<"FRACTION"> {
     this.denominator = d / g;
   }
 
-  toString(): string {
-    if (this.denominator === 1n) return this.numerator.toString();
+  print(): string {
     return `${this.numerator}/${this.denominator}`;
+  }
+  toString(): string {
+    return `(${this.numerator}/${this.denominator})`;
   }
 }
 
@@ -102,6 +149,9 @@ export class Add extends BaseNode<"ADD"> {
     super("ADD");
   }
 
+  print(): string {
+    return printSelf(this, " + ");
+  }
   toString(): string {
     return `(${this.left.toString()} + ${this.right.toString()})`;
   }
@@ -115,6 +165,9 @@ export class Subtract extends BaseNode<"SUBTRACT"> {
     super("SUBTRACT");
   }
 
+  print(): string {
+    return printSelf(this, " - ");
+  }
   toString(): string {
     return `(${this.left.toString()} - ${this.right.toString()})`;
   }
@@ -128,6 +181,45 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
     super("MULTIPLY");
   }
 
+  print(): string {
+    const { left, right } = this;
+    if (
+      left.type === "INTEGER" &&
+      left.value === -1n &&
+      right.type !== "INTEGER" &&
+      right.type !== "DECIMAL" &&
+      right.type !== "UNDEFINED" &&
+      !isNegative(right)
+    ) {
+      const needsParens =
+        right.type === "ADD" ||
+        right.type === "SUBTRACT" ||
+        right.type === "DIVIDE" ||
+        right.type === "MOD" ||
+        (right.type === "MULTIPLY" &&
+          !(
+            isNumerical(right.left) &&
+            (right.right.type === "SYMBOL" ||
+              (right.right.type === "POWER" &&
+                right.right.left.type === "SYMBOL"))
+          ));
+      const r = needsParens ? `(${right.print()})` : right.print();
+      return `-${r}`;
+    }
+    if (
+      right.type === "SYMBOL" ||
+      (right.type === "POWER" && right.left.type === "SYMBOL")
+    ) {
+      if (left.type === "INTEGER" || left.type === "DECIMAL") {
+        return `${left.print()}${right.print()}`;
+      }
+      if (left.type === "FRACTION") {
+        const coeff = left.numerator === 1n ? "" : `${left.numerator}`;
+        return `${coeff}${right.print()}/${left.denominator}`;
+      }
+    }
+    return printSelf(this, " * ");
+  }
   toString(): string {
     return `(${this.left.toString()} * ${this.right.toString()})`;
   }
@@ -141,21 +233,25 @@ export class Divide extends BaseNode<"DIVIDE"> {
     super("DIVIDE");
   }
 
+  print(): string {
+    return printSelf(this, " / ");
+  }
   toString(): string {
     return `(${this.left.toString()} / ${this.right.toString()})`;
   }
 }
 
 export class Modulo extends BaseNode<"MOD"> {
-  readonly left: TreeNode;
-  readonly right: TreeNode;
-
-  constructor(left: TreeNode, right: TreeNode) {
+  constructor(
+    readonly left: TreeNode,
+    readonly right: TreeNode,
+  ) {
     super("MOD");
-    this.left = left;
-    this.right = right;
   }
 
+  print(): string {
+    return printSelf(this, " % ");
+  }
   toString(): string {
     return `(${this.left.toString()} % ${this.right.toString()})`;
   }
@@ -169,18 +265,41 @@ export class Power extends BaseNode<"POWER"> {
     super("POWER");
   }
 
+  print(): string {
+    return printSelf(this, "^");
+  }
   toString(): string {
     return `(${this.left.toString()} ^ ${this.right.toString()})`;
   }
 }
 
+export class SymbolNode extends BaseNode<"SYMBOL"> {
+  constructor(readonly name: string) {
+    super("SYMBOL");
+  }
+
+  print(): string {
+    return this.name;
+  }
+  toString(): string {
+    return this.name;
+  }
+}
+
+export function isNumerical(node: TreeNode): node is NumericalNode {
+  return (
+    node.type === "INTEGER" ||
+    node.type === "DECIMAL" ||
+    node.type === "FRACTION"
+  );
+}
+
 export type NumericalNode = Integer | Decimal | Fraction;
 
-export type TreeNode =
-  | NumericalNode
-  | Add
-  | Subtract
-  | Multiply
-  | Divide
-  | Modulo
-  | Power;
+export type BinaryNode = Add | Subtract | Multiply | Divide | Modulo | Power;
+
+export type SymbolicNode = SymbolNode | BinaryNode;
+
+export type DefinedNode = NumericalNode | SymbolicNode;
+
+export type TreeNode = DefinedNode | Undefined;

@@ -1,7 +1,7 @@
 import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
-import type { TreeNode } from "./nodes";
+import type { DefinedNode } from "./nodes";
 import {
   Add,
   Decimal,
@@ -11,7 +11,9 @@ import {
   Multiply,
   Power,
   Subtract,
+  SymbolNode,
 } from "./nodes";
+import { negate } from "./shared";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -33,7 +35,7 @@ export class Parser {
     return token;
   }
 
-  public parse(): TreeNode {
+  public parse(): DefinedNode {
     if (this.tokens.length === 0) {
       throw new ParserError("Empty expression", 0);
     }
@@ -45,7 +47,7 @@ export class Parser {
     return node;
   }
 
-  private parseFactor(): TreeNode {
+  private parseFactor(): DefinedNode {
     const token = this.peek();
 
     if (!token) {
@@ -74,6 +76,11 @@ export class Parser {
       return new Integer(token.whole);
     }
 
+    if (token.type === "IDENTIFIER") {
+      this.consume(token);
+      return new SymbolNode(token.id);
+    }
+
     if (token.type === "LPAREN") {
       this.consume(token);
       const node = this.parseExpression();
@@ -84,14 +91,14 @@ export class Parser {
           nextToken?.pos ?? this.tokens.at(-1)?.pos ?? 0,
         );
       }
-      this.consume(token);
+      this.consume(nextToken);
       return node;
     }
 
     throw new ParserError(`Unexpected token type '${token.type}'`, token.pos);
   }
 
-  private parseExponent(): TreeNode {
+  private parseExponent(): DefinedNode {
     let left = this.parseFactor();
 
     const token = this.peek();
@@ -104,13 +111,20 @@ export class Parser {
     return left;
   }
 
-  private parseImplicitMul(): TreeNode {
+  private parseImplicitMul(prev?: Token): DefinedNode {
     let left = this.parseExponent();
 
     let token;
     while ((token = this.peek())) {
-      if (token.type === "NUMBER" || token.type === "LPAREN") {
+      const canImplicitMultiply =
+        token.type === "LPAREN" ||
+        token.type === "IDENTIFIER" ||
+        (token.type === "NUMBER" &&
+          (prev?.type === "RPAREN" || prev?.type === "LPAREN"));
+
+      if (canImplicitMultiply) {
         const right = this.parseExponent();
+        prev = undefined;
         left = new Multiply(left, right);
       } else {
         break;
@@ -120,7 +134,7 @@ export class Parser {
     return left;
   }
 
-  private parseUnary(): TreeNode {
+  private parseUnary(): DefinedNode {
     const token = this.peek();
 
     if (token?.type === "PLUS") {
@@ -130,14 +144,13 @@ export class Parser {
 
     if (token?.type === "MINUS") {
       this.consume(token);
-      const operand = this.parseUnary();
-      return new Subtract(new Integer(0), operand);
+      return negate(this.parseUnary());
     }
 
-    return this.parseImplicitMul();
+    return this.parseImplicitMul(token);
   }
 
-  private parseTerm(): TreeNode {
+  private parseTerm(): DefinedNode {
     let left = this.parseUnary();
 
     let token;
@@ -162,7 +175,7 @@ export class Parser {
     return left;
   }
 
-  private parseExpression(): TreeNode {
+  private parseExpression(): DefinedNode {
     let left = this.parseTerm();
 
     let token;
