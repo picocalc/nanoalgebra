@@ -34,3 +34,5 @@ export function isZero(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value === 0n;
   return false;
 }
+
+export const POW_BITS_THRESHOLD = 50_000n;

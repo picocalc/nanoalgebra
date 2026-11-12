@@ -355,6 +355,23 @@ describe("evaluate", () => {
       expect(simplify("(-1)^3").print()).toBe("-1");
     });
 
+    it("handles exponentiation to a large exponent", () => {
+      expect(simplify("2 ^ (5^10)").print()).toBe("2^9765625");
+      expect(simplify("5 ^ (5^10)").print()).toBe("5^9765625");
+      expect(simplify("10 ^ (10^10)").print()).toBe("10^10000000000");
+
+      expect(simplify("2.5 ^ (5^10)").print()).toBe("2.5^9765625");
+
+      expect(simplify("(1/10) ^ (5^10)").print()).toBe("(1/10)^9765625");
+
+      expect(simplify("2.5 ^ ((-5) ^ 9)").print()).toBe("2.5^-1953125");
+    });
+
+    it("handles combination of exponentiation to a fractional power, multiplication and division", () => {
+      expect(simplify("5 ^ 2.5 * 5 ^ 0.5").print()).toBe("125");
+      expect(simplify("5 ^ 2.5 / 5 ^ 0.5").print()).toBe("25");
+    });
+
     it.failing("handles exponentiation to a fractional power", () => {
       expect(simplify("4^(1/2)").print()).toBe("2");
       expect(simplify("4^0.5").print()).toBe("2");

@@ -1,3 +1,5 @@
+import { powBitLength } from "bigint.bitlength";
+
 import { AlgebraError } from "./errors";
 import type {
   NumericalNode,
@@ -18,7 +20,7 @@ import {
   Subtract,
   Undefined,
 } from "./nodes";
-import { isZero, negate } from "./shared";
+import { isZero, negate, POW_BITS_THRESHOLD } from "./shared";
 
 export class EvaluatorError extends AlgebraError {
   constructor(message: string) {
@@ -250,7 +252,7 @@ export class Evaluator {
         ? new Integer(1)
         : this.isOne(totalExp)
           ? leftInfo.base
-          : new Power(leftInfo.base, totalExp);
+          : this.simplify(new Power(leftInfo.base, totalExp));
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
@@ -291,7 +293,7 @@ export class Evaluator {
         ? new Integer(1)
         : this.isOne(totalExp)
           ? leftInfo.base
-          : new Power(leftInfo.base, totalExp);
+          : this.simplify(new Power(leftInfo.base, totalExp));
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
@@ -440,15 +442,34 @@ export class Evaluator {
     return null;
   }
 
-  private evaluatePower(base: NumericalNode, exp: bigint): NumericalNode {
+  private evaluatePower(
+    base: NumericalNode,
+    exp: bigint,
+  ): NumericalNode | Power {
     if (exp > 0n) {
       if (base.type === "INTEGER") {
+        if (powBitLength(base.value, exp) > POW_BITS_THRESHOLD) {
+          return new Power(base, new Integer(exp));
+        }
         return new Integer(base.value ** exp);
       }
       if (base.type === "DECIMAL") {
+        if (
+          powBitLength(base.whole, exp) > POW_BITS_THRESHOLD ||
+          base.exponent * exp > POW_BITS_THRESHOLD ||
+          base.exponent * exp < -POW_BITS_THRESHOLD
+        ) {
+          return new Power(base, new Integer(exp));
+        }
         const coeff = base.whole ** exp;
         const exponent = base.exponent * exp;
         return Evaluator.normalizeDecimal(coeff, exponent);
+      }
+      if (
+        powBitLength(base.numerator, exp) > POW_BITS_THRESHOLD ||
+        powBitLength(base.denominator, exp) > POW_BITS_THRESHOLD
+      ) {
+        return new Power(base, new Integer(exp));
       }
       return this.normalizeFraction(
         base.numerator ** exp,
@@ -456,8 +477,15 @@ export class Evaluator {
       );
     }
 
+    const e = -exp;
     const f = Evaluator.toFraction(base);
-    return this.normalizeFraction(f.denominator ** -exp, f.numerator ** -exp);
+    if (
+      powBitLength(f.denominator, e) > POW_BITS_THRESHOLD ||
+      powBitLength(f.numerator, e) > POW_BITS_THRESHOLD
+    ) {
+      return new Power(base, new Integer(exp));
+    }
+    return this.normalizeFraction(f.denominator ** e, f.numerator ** e);
   }
 
   private static normalizeDecimal(
