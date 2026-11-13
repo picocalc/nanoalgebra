@@ -633,11 +633,16 @@ describe("evaluate", () => {
   describe("functions", () => {
     it("handles sqrt function", () => {
       expect(simplify("sqrt(pi^2)").print()).toBe("pi");
+      expect(simplify("sqrt(x^2)").print()).toBe("abs(x)");
     });
 
-    it("handles sqrt function", () => {
+    it("handles abs function", () => {
       expect(simplify("abs(2)").print()).toBe("2");
       expect(simplify("abs(-2)").print()).toBe("2");
+      expect(simplify("abs(pi)").print()).toBe("pi");
+      expect(simplify("abs(pi^2)").print()).toBe("pi^2");
+      expect(simplify("abs(x)").print()).toBe("abs(x)");
+      expect(simplify("abs(x^2)").print()).toBe("x^2");
     });
 
     it("handles custom functions", () => {
