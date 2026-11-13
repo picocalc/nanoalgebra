@@ -171,6 +171,10 @@ export class Evaluator {
           return this.evaluateNumericAbs(args[0]);
         }
 
+        if (name === "sqrt" && args.length === 1) {
+          return this.simplify(new Power(args[0], new Fraction(1n, 2n)));
+        }
+
         return new FunctionCall(name, args);
       }
     }
