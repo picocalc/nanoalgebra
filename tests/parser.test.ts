@@ -25,7 +25,18 @@ describe("parse", () => {
 
   it("handles constants and functions", () => {
     expect(parse("pi")).toMatchObject({ type: "SYMBOL", name: "pi" });
-    expect(parse("sqrt(4)")).toMatchObject({ type: "FUNCTION", name: "sqrt" });
+    expect(parse("sqrt(4)")).toMatchObject({
+      type: "FUNCTION",
+      name: "sqrt",
+      args: [{ type: "INTEGER", value: 4n }],
+    });
+  });
+
+  it("handles undefined", () => {
+    expect(parse("undefined")).toMatchObject({
+      type: "UNDEFINED",
+      node: { type: "SYMBOL", name: "undefined" },
+    });
   });
 
   describe("invalid expressions", () => {

@@ -69,7 +69,7 @@ export class Undefined extends BaseNode<"UNDEFINED"> {
     return this.node.print();
   }
   toString(): string {
-    return "UNDEFINED";
+    return "undefined";
   }
 }
 
@@ -297,10 +297,10 @@ export class FunctionCall extends BaseNode<"FUNCTION"> {
   }
 
   print(): string {
-    return `${this.name}(${this.args[0].print()})`;
+    return `${this.name}(${this.args.map((n) => n.print()).join(", ")})`;
   }
   toString(): string {
-    return `${this.name}(${this.args[0].toString()})`;
+    return `${this.name}(${this.args.map((n) => n.toString()).join(", ")})`;
   }
 }
 

@@ -1,7 +1,8 @@
 import { Evaluator } from "#lib/evaluator";
 import { tokenize } from "#lib/lexer";
-import type { DefinedNode, TreeNode } from "#lib/nodes";
-import { Parser, type ParserOptions } from "#lib/parser";
+import type { TreeNode } from "#lib/nodes";
+import type { ParserOptions } from "#lib/parser";
+import { Parser } from "#lib/parser";
 
 export { AlgebraError } from "#lib/errors";
 
@@ -10,7 +11,7 @@ const functions = new Set(["abs", "sqrt"] as const);
 function parse(
   expression: string,
   options: ParserOptions = { functions },
-): DefinedNode {
+): TreeNode {
   const tokens = tokenize(expression);
   return new Parser(tokens, options).parse();
 }

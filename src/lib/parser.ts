@@ -1,7 +1,7 @@
 import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
-import type { DefinedNode } from "./nodes";
+import type { TreeNode } from "./nodes";
 import {
   Add,
   Decimal,
@@ -13,6 +13,7 @@ import {
   Power,
   Subtract,
   SymbolNode,
+  Undefined,
 } from "./nodes";
 import { negate } from "./shared";
 
@@ -43,7 +44,7 @@ export class Parser {
     return token;
   }
 
-  public parse(): DefinedNode {
+  public parse(): TreeNode {
     if (this.tokens.length === 0) {
       throw new ParserError("Empty expression", 0);
     }
@@ -73,7 +74,7 @@ export class Parser {
       );
     }
 
-    const args: [DefinedNode, ...DefinedNode[]] = [this.parseExpression()];
+    const args: [TreeNode, ...TreeNode[]] = [this.parseExpression()];
 
     let token;
     while ((token = this.peek())) {
@@ -94,7 +95,7 @@ export class Parser {
     return new FunctionCall(name, args);
   }
 
-  private parseFactor(): DefinedNode {
+  private parseFactor(): TreeNode {
     const token = this.peek();
 
     if (!token) {
@@ -126,6 +127,10 @@ export class Parser {
     if (token.type === "IDENTIFIER") {
       this.consume(token);
 
+      if (token.id === "undefined") {
+        return new Undefined(new SymbolNode(token.id));
+      }
+
       if (this.options.functions?.has(token.id)) {
         return this.parseFunctionCall(token.id, token.pos);
       }
@@ -150,7 +155,7 @@ export class Parser {
     throw new ParserError(`Unexpected token type '${token.type}'`, token.pos);
   }
 
-  private parseExponent(): DefinedNode {
+  private parseExponent(): TreeNode {
     let left = this.parseFactor();
 
     const token = this.peek();
@@ -163,7 +168,7 @@ export class Parser {
     return left;
   }
 
-  private parseImplicitMul(prev?: Token): DefinedNode {
+  private parseImplicitMul(prev?: Token): TreeNode {
     let left = this.parseExponent();
 
     let token;
@@ -186,7 +191,7 @@ export class Parser {
     return left;
   }
 
-  private parseUnary(): DefinedNode {
+  private parseUnary(): TreeNode {
     const token = this.peek();
 
     if (token?.type === "PLUS") {
@@ -202,7 +207,7 @@ export class Parser {
     return this.parseImplicitMul(token);
   }
 
-  private parseTerm(): DefinedNode {
+  private parseTerm(): TreeNode {
     let left = this.parseUnary();
 
     let token;
@@ -227,7 +232,7 @@ export class Parser {
     return left;
   }
 
-  private parseExpression(): DefinedNode {
+  private parseExpression(): TreeNode {
     let left = this.parseTerm();
 
     let token;

@@ -5,10 +5,10 @@ import { simplify } from "#src";
 
 function expectUndefined(expression: string) {
   const simplified = simplify(expression);
-  expect(simplified.toString()).toBe("UNDEFINED");
+  expect(simplified.toString()).toBe("undefined");
   const printed = simplified.print();
   const doubleSimplified = simplify(printed);
-  expect(doubleSimplified.toString()).toBe("UNDEFINED");
+  expect(doubleSimplified.toString()).toBe("undefined");
   expect(doubleSimplified.print()).toBe(printed);
   return expect(printed);
 }
@@ -632,13 +632,20 @@ describe("evaluate", () => {
 
   describe("functions", () => {
     it("handles sqrt function", () => {
-      expect(simplify("sqrt(pi)").print()).toBe("pi");
       expect(simplify("sqrt(pi^2)").print()).toBe("pi");
     });
 
     it("handles sqrt function", () => {
       expect(simplify("abs(2)").print()).toBe("2");
       expect(simplify("abs(-2)").print()).toBe("2");
+    });
+
+    it("handles custom functions", () => {
+      const functions = new Set(["fn"]);
+      expect(simplify("fn(1 + 1)", { functions }).print()).toBe("fn(2)");
+      expect(simplify("fn(2 * 2, 5-3)", { functions }).print()).toBe(
+        "fn(4, 2)",
+      );
     });
   });
 });

@@ -1,13 +1,14 @@
 import { describe, it, expect } from "bun:test";
 
 import { parse } from "#src";
+import type { ParserOptions } from "#lib/parser";
 
-function testPrint(expression: string) {
-  const parsed = parse(expression);
+function testPrint(expression: string, options?: ParserOptions) {
+  const parsed = parse(expression, options);
   const printed = parsed.print();
   const stringified = parsed.toString();
-  expect(parse(printed).toString()).toBe(stringified);
-  expect(parse(stringified).toString()).toBe(stringified);
+  expect(parse(printed, options).toString()).toBe(stringified);
+  expect(parse(stringified, options).toString()).toBe(stringified);
   return expect(printed);
 }
 
@@ -80,5 +81,14 @@ describe(".print() and .toString()", () => {
   it("handles expressions with constants", () => {
     testPrint("2pi * e").toMatchInlineSnapshot(`"2pi * e"`);
     testPrint("pi^(2/3)").toMatchInlineSnapshot(`"pi^(2 / 3)"`);
+  });
+
+  it("handles undefined", () => {
+    testPrint("undefined").toMatchInlineSnapshot(`"undefined"`);
+  });
+
+  it("handles functions", () => {
+    const functions = new Set(["fn"]);
+    testPrint("fn(1 + 1, fn(-pi))", { functions }).toMatchInlineSnapshot(`"fn(1 + 1, fn(-pi))"`);
   });
 });

@@ -12,6 +12,7 @@ import {
   Decimal,
   Divide,
   Fraction,
+  FunctionCall,
   Integer,
   isNumerical,
   Modulo,
@@ -38,7 +39,6 @@ export class Evaluator {
       case "FRACTION":
       case "SYMBOL":
       case "UNDEFINED":
-      case "FUNCTION":
         return node;
 
       case "ADD":
@@ -145,6 +145,13 @@ export class Evaluator {
         }
 
         return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
+      }
+
+      case "FUNCTION": {
+        return new FunctionCall(node.name, [
+          this.simplify(node.args[0]),
+          ...node.args.slice(1).map((n) => this.simplify(n)),
+        ]);
       }
     }
   }

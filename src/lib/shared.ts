@@ -1,12 +1,8 @@
-import {
-  Decimal,
-  Integer,
-  Multiply,
-  type DefinedNode,
-  type TreeNode,
-} from "./nodes";
+import type { TreeNode } from "./nodes";
+import { Decimal, Integer, Multiply } from "./nodes";
 
-export function negate(node: DefinedNode): DefinedNode {
+export function negate(node: TreeNode): TreeNode {
+  if (node.type === "UNDEFINED") return node;
   if (node.type === "INTEGER") return new Integer(-node.value);
   if (node.type === "DECIMAL") return new Decimal(-node.whole, node.exponent);
   if (
