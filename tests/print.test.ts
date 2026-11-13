@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 
-import { parse } from "#src";
 import type { ParserOptions } from "#lib/parser";
+import { parse } from "#src";
 
 function testPrint(expression: string, options?: ParserOptions) {
   const parsed = parse(expression, options);
@@ -89,6 +89,8 @@ describe(".print() and .toString()", () => {
 
   it("handles functions", () => {
     const functions = new Set(["fn"]);
-    testPrint("fn(1 + 1, fn(-pi))", { functions }).toMatchInlineSnapshot(`"fn(1 + 1, fn(-pi))"`);
+    testPrint("fn(1 + 1, fn(-pi))", { functions }).toMatchInlineSnapshot(
+      `"fn(1 + 1, fn(-pi))"`,
+    );
   });
 });

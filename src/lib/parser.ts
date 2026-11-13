@@ -27,12 +27,14 @@ export interface ParserOptions {
   functions?: ReadonlySet<string>;
 }
 
+export const functions: ReadonlySet<string> = new Set(["abs", "sqrt"]);
+
 export class Parser {
   private current: number = 0;
 
   constructor(
     readonly tokens: Token[],
-    readonly options: Readonly<ParserOptions>,
+    readonly options: Readonly<ParserOptions> = { functions },
   ) {}
 
   private peek(): Token | undefined {

@@ -29,8 +29,17 @@ export class EvaluatorError extends AlgebraError {
   }
 }
 
+export interface EvaluatorOptions {
+  cosnstants?: ReadonlyMap<string, true>;
+}
+
+export const cosnstants: ReadonlyMap<string, true> = new Map([
+  ["pi", true],
+  ["e", true],
+]);
+
 export class Evaluator {
-  constructor() {}
+  constructor(readonly options: Readonly<EvaluatorOptions> = { cosnstants }) {}
 
   public simplify(node: TreeNode): TreeNode {
     switch (node.type) {

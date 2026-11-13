@@ -1,3 +1,4 @@
+import type { EvaluatorOptions } from "#lib/evaluator";
 import { Evaluator } from "#lib/evaluator";
 import { tokenize } from "#lib/lexer";
 import type { TreeNode } from "#lib/nodes";
@@ -6,22 +7,17 @@ import { Parser } from "#lib/parser";
 
 export { AlgebraError } from "#lib/errors";
 
-const functions = new Set(["abs", "sqrt"] as const);
-
-function parse(
-  expression: string,
-  options: ParserOptions = { functions },
-): TreeNode {
+function parse(expression: string, options?: ParserOptions): TreeNode {
   const tokens = tokenize(expression);
   return new Parser(tokens, options).parse();
 }
 
 function simplify(
   expression: string,
-  options: ParserOptions = { functions },
+  options?: ParserOptions & EvaluatorOptions,
 ): TreeNode {
   const tree = parse(expression, options);
-  const evaluator = new Evaluator();
+  const evaluator = new Evaluator(options);
   return evaluator.simplify(tree);
 }
 
