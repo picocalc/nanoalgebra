@@ -22,22 +22,21 @@ export interface TokenIdentifier extends TokenBase {
   id: string;
 }
 
-export type TokenBinaryOperator =
-  | { type: "MUL"; pos: number }
-  | { type: "DIV"; pos: number }
-  | { type: "POW"; pos: number }
-  | { type: "MOD"; pos: number };
+interface TokenBinaryOperator {
+  type: "PLUS" | "MINUS" | "MUL" | "DIV" | "POW" | "MOD";
+  pos: number;
+}
+
+interface TokenCharacter {
+  type: "FACTORIAL" | "PIPE" | "LPAREN" | "RPAREN" | "COMMA" | "SEMICOLON";
+  pos: number;
+}
 
 export type Token =
   | TokenNumber
   | TokenIdentifier
   | TokenBinaryOperator
-  | { type: "PLUS"; pos: number }
-  | { type: "MINUS"; pos: number }
-  | { type: "FACTORIAL"; pos: number }
-  | { type: "PIPE"; pos: number }
-  | { type: "LPAREN"; pos: number }
-  | { type: "RPAREN"; pos: number };
+  | TokenCharacter;
 
 type TokenType = Exclude<Token, TokenNumber | TokenIdentifier>["type"];
 
@@ -69,6 +68,8 @@ const CHAR_MAP: Record<string, TokenType> = {
   "!": "FACTORIAL",
   "|": "PIPE",
   "%": "MOD",
+  ",": "COMMA",
+  ";": "SEMICOLON",
 };
 
 /**

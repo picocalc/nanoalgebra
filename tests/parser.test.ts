@@ -23,6 +23,11 @@ describe("parse", () => {
     });
   });
 
+  it("handles constants and functions", () => {
+    expect(parse("pi")).toMatchObject({ type: "SYMBOL", name: "pi" });
+    expect(parse("sqrt(4)")).toMatchObject({ type: "FUNCTION", name: "sqrt" });
+  });
+
   describe("invalid expressions", () => {
     it("handles an empty expression", () => {
       expect(() => parse("")).toThrow(ParserError);

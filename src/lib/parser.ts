@@ -6,6 +6,7 @@ import {
   Add,
   Decimal,
   Divide,
+  FunctionCall,
   Integer,
   Modulo,
   Multiply,
@@ -21,10 +22,17 @@ export class ParserError extends AlgebraError {
   }
 }
 
+export interface ParserOptions {
+  functions?: ReadonlySet<string>;
+}
+
 export class Parser {
   private current: number = 0;
 
-  constructor(readonly tokens: Token[]) {}
+  constructor(
+    readonly tokens: Token[],
+    readonly options: Readonly<ParserOptions>,
+  ) {}
 
   private peek(): Token | undefined {
     return this.tokens[this.current];
@@ -45,6 +53,45 @@ export class Parser {
       throw new ParserError(`Unexpected token '${token.type}'`, token.pos);
     }
     return node;
+  }
+
+  private parseFunctionCall(name: string, pos: number): FunctionCall {
+    const openParen = this.peek();
+    if (openParen?.type !== "LPAREN") {
+      throw new ParserError(
+        `Expected '(' after function '${name}'`,
+        openParen?.pos ?? this.tokens.at(-1)?.pos ?? pos,
+      );
+    }
+    this.consume(openParen);
+
+    const firstToken = this.peek();
+    if (firstToken?.type === "RPAREN") {
+      throw new ParserError(
+        `Expected at least one argument for function '${name}'`,
+        firstToken.pos,
+      );
+    }
+
+    const args: [DefinedNode, ...DefinedNode[]] = [this.parseExpression()];
+
+    let token;
+    while ((token = this.peek())) {
+      if (token.type !== "COMMA") break;
+      this.consume(token);
+      args.push(this.parseExpression());
+    }
+
+    const closeParen = this.peek();
+    if (closeParen?.type !== "RPAREN") {
+      throw new ParserError(
+        "Expected closing parenthesis",
+        closeParen?.pos ?? this.tokens.at(-1)?.pos ?? 0,
+      );
+    }
+    this.consume(closeParen);
+
+    return new FunctionCall(name, args);
   }
 
   private parseFactor(): DefinedNode {
@@ -78,6 +125,11 @@ export class Parser {
 
     if (token.type === "IDENTIFIER") {
       this.consume(token);
+
+      if (this.options.functions?.has(token.id)) {
+        return this.parseFunctionCall(token.id, token.pos);
+      }
+
       return new SymbolNode(token.id);
     }
 

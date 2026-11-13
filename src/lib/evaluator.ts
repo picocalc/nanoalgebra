@@ -38,6 +38,7 @@ export class Evaluator {
       case "FRACTION":
       case "SYMBOL":
       case "UNDEFINED":
+      case "FUNCTION":
         return node;
 
       case "ADD":

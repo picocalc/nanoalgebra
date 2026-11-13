@@ -629,4 +629,16 @@ describe("evaluate", () => {
       expect(simplify("(pi^4)^(1/2)").print()).toBe("pi^2");
     });
   });
+
+  describe("functions", () => {
+    it("handles sqrt function", () => {
+      expect(simplify("sqrt(pi)").print()).toBe("pi");
+      expect(simplify("sqrt(pi^2)").print()).toBe("pi");
+    });
+
+    it("handles sqrt function", () => {
+      expect(simplify("abs(2)").print()).toBe("2");
+      expect(simplify("abs(-2)").print()).toBe("2");
+    });
+  });
 });
