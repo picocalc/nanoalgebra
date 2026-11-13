@@ -53,10 +53,6 @@ function isAlpha(ch?: string): boolean {
   return ch >= "a" && ch <= "z";
 }
 
-export interface LexerOptions {
-  readonly decimalSeparator?: "." | ",";
-}
-
 /**
  * Maximum allowed expression length
  */
@@ -78,11 +74,7 @@ const CHAR_MAP: Record<string, TokenType> = {
 /**
  * Simple lexer (tokenizer).
  */
-export function tokenize(
-  expression: string,
-  options: LexerOptions = {},
-): Token[] {
-  const { decimalSeparator = "." } = options;
+export function tokenize(expression: string): Token[] {
   const tokens: Token[] = [];
   const length = expression.length;
 
@@ -99,7 +91,7 @@ export function tokenize(
 
     if (ch === " ") continue;
 
-    if (isDigit(ch) || ch === decimalSeparator) {
+    if (isDigit(ch) || ch === ".") {
       let whole = "";
       let fraction: string | undefined = undefined;
       let exponent: string | undefined = undefined;
@@ -110,7 +102,7 @@ export function tokenize(
         return expression.slice(start, index);
       };
 
-      if (ch === decimalSeparator) {
+      if (ch === ".") {
         whole = "0";
         index++;
         fraction = consumeDigits();
@@ -119,7 +111,7 @@ export function tokenize(
         }
       } else {
         whole = consumeDigits();
-        if (index < length && expression[index] === decimalSeparator) {
+        if (index < length && expression[index] === ".") {
           index++;
           fraction = consumeDigits();
         }
@@ -146,7 +138,7 @@ export function tokenize(
       }
 
       // Final check for trailing separators
-      if (index < length && expression[index] === decimalSeparator) {
+      if (index < length && expression[index] === ".") {
         throw new LexerError("Invalid decimal number format", index);
       }
 
