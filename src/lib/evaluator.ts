@@ -157,10 +157,21 @@ export class Evaluator {
       }
 
       case "FUNCTION": {
-        return new FunctionCall(node.name, [
-          this.simplify(node.args[0]),
-          ...node.args.slice(1).map((n) => this.simplify(n)),
-        ]);
+        const {
+          name,
+          args: [first, ...rest],
+        } = node;
+
+        const args = [
+          this.simplify(first),
+          ...rest.map((n) => this.simplify(n)),
+        ] as const;
+
+        if (name === "abs" && args.length === 1 && isNumerical(args[0])) {
+          return this.evaluateNumericAbs(args[0]);
+        }
+
+        return new FunctionCall(name, args);
       }
     }
   }
@@ -503,6 +514,20 @@ export class Evaluator {
       return new Power(base, new Integer(exp));
     }
     return this.normalizeFraction(f.denominator ** e, f.numerator ** e);
+  }
+
+  private evaluateNumericAbs(node: NumericalNode): NumericalNode {
+    if (node.type === "INTEGER") {
+      return node.value < 0n ? new Integer(-node.value) : node;
+    }
+    if (node.type === "DECIMAL") {
+      return node.whole < 0n
+        ? Evaluator.normalizeDecimal(-node.whole, node.exponent)
+        : node;
+    }
+    return node.numerator < 0n
+      ? this.normalizeFraction(-node.numerator, node.denominator)
+      : node;
   }
 
   private static normalizeDecimal(
