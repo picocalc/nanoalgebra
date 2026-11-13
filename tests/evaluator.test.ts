@@ -630,10 +630,20 @@ describe("evaluate", () => {
     });
   });
 
+  describe("variables", () => {
+    it("handles fractional exponents", () => {
+      expect(simplify("(x^2)^(1/2)").print()).toBe("abs(x)");
+      expect(simplify("(x^3)^(1/3)").print()).toBe("x");
+      expect(simplify("(x^4)^(1/4)").print()).toBe("abs(x)");
+    });
+  });
+
   describe("functions", () => {
     it("handles sqrt function", () => {
       expect(simplify("sqrt(pi^2)").print()).toBe("pi");
+      expect(simplify("sqrt(x)").print()).toBe("x^(1/2)");
       expect(simplify("sqrt(x^2)").print()).toBe("abs(x)");
+      expect(simplify("sqrt(x^4)").print()).toBe("x^2");
     });
 
     it("handles abs function", () => {
@@ -641,8 +651,14 @@ describe("evaluate", () => {
       expect(simplify("abs(-2)").print()).toBe("2");
       expect(simplify("abs(pi)").print()).toBe("pi");
       expect(simplify("abs(pi^2)").print()).toBe("pi^2");
+      expect(simplify("abs(abs(pi))").print()).toBe("pi");
+
       expect(simplify("abs(x)").print()).toBe("abs(x)");
       expect(simplify("abs(x^2)").print()).toBe("x^2");
+      expect(simplify("abs(x)^2").print()).toBe("x^2");
+      expect(simplify("abs(x^4)").print()).toBe("x^4");
+      expect(simplify("abs(x)^4").print()).toBe("x^4");
+      expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
     });
 
     it("handles custom functions", () => {

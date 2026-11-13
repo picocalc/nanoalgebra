@@ -136,6 +136,15 @@ export class Evaluator {
         const expInt = this.tryGetIntegerValue(right);
         const baseInt = this.tryGetIntegerValue(left);
 
+        if (
+          left.type === "FUNCTION" &&
+          left.name === "abs" &&
+          expInt !== null &&
+          expInt % 2n === 0n
+        ) {
+          return this.simplify(new Power(left.args[0], right));
+        }
+
         if (expInt === 1n) return left;
         if (expInt === 0n) return new Integer(1);
         if (baseInt === 1n) return new Integer(1);
@@ -167,8 +176,8 @@ export class Evaluator {
           ...rest.map((n) => this.simplify(n)),
         ] as const;
 
-        if (name === "abs" && args.length === 1 && isNumerical(args[0])) {
-          return this.evaluateNumericAbs(args[0]);
+        if (name === "abs" && args.length === 1) {
+          return this.evaluateAbs(args[0]);
         }
 
         if (name === "sqrt" && args.length === 1) {
@@ -178,6 +187,49 @@ export class Evaluator {
         return new FunctionCall(name, args);
       }
     }
+  }
+
+  private evaluateAbs(node: TreeNode): TreeNode {
+    if (isNumerical(node)) {
+      return this.evaluateNumericAbs(node);
+    }
+    if (node.type === "SYMBOL") {
+      if (this.options.constants?.has(node.name)) {
+        return node;
+      }
+      return new FunctionCall("abs", [node]);
+    }
+    if (node.type === "FUNCTION" && node.name === "abs") {
+      return node;
+    }
+    if (node.type === "POWER") {
+      const expInt = this.tryGetIntegerValue(node.right);
+      if (expInt !== null && expInt > 0n && expInt % 2n === 0n) {
+        return node;
+      }
+    }
+    return new FunctionCall("abs", [node]);
+  }
+
+  private isPositive(node: TreeNode): boolean {
+    if (isNumerical(node)) {
+      const frac = Evaluator.toFraction(node);
+      return frac.numerator >= 0n;
+    }
+    if (node.type === "SYMBOL") {
+      return !!this.options.constants?.has(node.name);
+    }
+    if (node.type === "FUNCTION" && node.name === "abs") {
+      return true;
+    }
+    if (node.type === "POWER") {
+      const expInt = this.tryGetIntegerValue(node.right);
+      if (expInt !== null && expInt % 2n === 0n) {
+        return true;
+      }
+      return this.isPositive(node.left);
+    }
+    return false;
   }
 
   private isOne(node: TreeNode): boolean {
@@ -350,7 +402,24 @@ export class Evaluator {
     if (left.type === "POWER") {
       const innerBase = left.left;
       const innerExp = left.right;
+      const innerExpInt = this.tryGetIntegerValue(innerExp);
       const newExp = this.simplify(new Multiply(innerExp, right));
+
+      const rightFrac = isNumerical(right) ? Evaluator.toFraction(right) : null;
+
+      if (
+        this.isOne(newExp) &&
+        innerExpInt !== null &&
+        innerExpInt % 2n === 0n &&
+        rightFrac !== null &&
+        rightFrac.denominator % 2n === 0n
+      ) {
+        if (this.isPositive(innerBase)) {
+          return innerBase;
+        }
+        return this.simplify(new FunctionCall("abs", [innerBase]));
+      }
+
       return this.simplify(new Power(innerBase, newExp));
     }
 
