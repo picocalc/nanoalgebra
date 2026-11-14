@@ -672,6 +672,8 @@ describe("evaluate", () => {
       expect(simplify("abs(-x / x)").print()).toBe("x / x");
       expect(simplify("abs(x / -x)").print()).toBe("x / x");
       expect(simplify("-x / -x").print()).toBe("x / x");
+      expect(simplify("(x / x) + (x / x)").print()).toBe("2x / x");
+      expect(simplify("(x / x) - (x / x)").print()).toBe("0 / x");
     });
 
     it("handles fractional exponents", () => {
