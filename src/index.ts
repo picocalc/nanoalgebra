@@ -1,11 +1,10 @@
+import { AlgebraError } from "#lib/errors";
 import type { EvaluatorOptions } from "#lib/evaluator";
-import { Evaluator } from "#lib/evaluator";
+import { constants, Evaluator } from "#lib/evaluator";
 import { tokenize } from "#lib/lexer";
 import type { TreeNode } from "#lib/nodes";
 import type { ParserOptions } from "#lib/parser";
-import { Parser } from "#lib/parser";
-
-export { AlgebraError } from "#lib/errors";
+import { functions, Parser } from "#lib/parser";
 
 function parse(expression: string, options?: ParserOptions): TreeNode {
   const tokens = tokenize(expression);
@@ -21,4 +20,13 @@ function simplify(
   return evaluator.simplify(tree);
 }
 
-export { simplify, parse, tokenize, Parser, Evaluator };
+export {
+  simplify,
+  parse,
+  tokenize,
+  Parser,
+  Evaluator,
+  constants,
+  functions,
+  AlgebraError,
+};
