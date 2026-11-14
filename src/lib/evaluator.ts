@@ -404,44 +404,80 @@ export class Evaluator {
       ]);
     }
 
-    const s1 = this.singleFactor(t1.factors);
-    const s2 = this.singleFactor(t2.factors);
-    const leftInfo = this.getBaseAndExp(s1);
-    const rightInfo = this.getBaseAndExp(s2);
+    const rightUsed = Array.from<boolean>({ length: t2.factors.length }).fill(
+      false,
+    );
+    const newFactors: TreeNode[] = [];
+    let merged = false;
 
-    if (
-      leftInfo &&
-      rightInfo &&
-      leftInfo.base.print() === rightInfo.base.print()
-    ) {
-      const totalExp = this.evaluateNumericBinary(
-        leftInfo.exp,
-        rightInfo.exp,
-        "ADD",
-      );
-      const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-
-      if (
-        this.losesEvenRootParity(
-          leftInfo.base,
-          leftInfo.exp,
-          rightInfo.exp,
-          totalExp,
-        )
-      ) {
-        return s1 && s2 && s1.print() === s2.print()
-          ? this.withCoeff(combinedCoeff, new Power(s1, new Integer(2)))
-          : null;
+    for (const leftFactor of t1.factors) {
+      const leftInfo = this.getBaseAndExp(leftFactor);
+      if (!leftInfo) {
+        newFactors.push(leftFactor);
+        continue;
       }
 
-      return this.withCoeff(
-        combinedCoeff,
-        this.makePower(leftInfo.base, totalExp),
-        true,
-      );
+      let matched = false;
+      for (const [j, rightFactor] of t2.factors.entries()) {
+        if (rightUsed[j]) continue;
+        const rightInfo = this.getBaseAndExp(rightFactor);
+        if (!rightInfo || leftInfo.base.print() !== rightInfo.base.print()) {
+          continue;
+        }
+
+        const totalExp = this.evaluateNumericBinary(
+          leftInfo.exp,
+          rightInfo.exp,
+          "ADD",
+        );
+
+        if (
+          this.losesEvenRootParity(
+            leftInfo.base,
+            leftInfo.exp,
+            rightInfo.exp,
+            totalExp,
+          )
+        ) {
+          if (leftFactor.print() !== rightFactor.print()) {
+            continue;
+          }
+          rightUsed[j] = true;
+          newFactors.push(new Power(leftFactor, new Integer(2)));
+          merged = matched = true;
+          break;
+        }
+
+        rightUsed[j] = true;
+        if (!isZero(totalExp)) {
+          const powered = this.makePower(leftInfo.base, totalExp);
+          if (!this.isOne(powered)) {
+            newFactors.push(powered);
+          }
+        }
+        merged = matched = true;
+        break;
+      }
+
+      if (!matched) {
+        newFactors.push(leftFactor);
+      }
     }
 
-    return null;
+    for (const [j, rightFactor] of t2.factors.entries()) {
+      if (!rightUsed[j]) {
+        newFactors.push(rightFactor);
+      }
+    }
+
+    if (!merged && (this.isOne(t1.coeff) || this.isOne(t2.coeff))) {
+      return null;
+    }
+
+    const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
+    return newFactors.length === 0
+      ? combinedCoeff
+      : this.withCoeff(combinedCoeff, this.multiplyAll(newFactors), true);
   }
 
   private getZeroGuard(node: TreeNode): TreeNode {
