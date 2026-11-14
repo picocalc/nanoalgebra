@@ -29,22 +29,19 @@ export class EvaluatorError extends AlgebraError {
   }
 }
 
-interface EvaluatorConstant {
-  positive: true;
-  real: true;
-}
+type SymbolDomain = "positive" | "negative" | "real" | "complex";
 
 export interface EvaluatorOptions {
-  constants?: ReadonlyMap<string, EvaluatorConstant>;
+  constants?: ReadonlyMap<string, SymbolDomain>;
   complex?: boolean;
 }
 
-export const constants: ReadonlyMap<string, EvaluatorConstant> = new Map<
+export const constants: ReadonlyMap<string, SymbolDomain> = new Map<
   string,
-  EvaluatorConstant
+  SymbolDomain
 >([
-  ["pi", { positive: true, real: true }],
-  ["e", { positive: true, real: true }],
+  ["pi", "positive"],
+  ["e", "positive"],
 ]);
 
 export class Evaluator {
@@ -214,7 +211,7 @@ export class Evaluator {
       return frac.numerator >= 0n;
     }
     if (node.type === "SYMBOL") {
-      return !!this.options.constants?.get(node.name)?.positive;
+      return this.options.constants?.get(node.name) === "positive";
     }
     if (node.type === "FUNCTION" && node.name === "abs") {
       return true;
