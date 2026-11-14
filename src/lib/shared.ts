@@ -1,4 +1,4 @@
-import type { TreeNode } from "./nodes";
+import type { NumericalNode, TreeNode } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
 
 export function negate(node: TreeNode): TreeNode {
@@ -37,6 +37,22 @@ export function isOne(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value === 1n;
   if (node.type === "DECIMAL") return node.whole === 1n && node.exponent === 0n;
   return false;
+}
+
+export function isNumerical(node: TreeNode): node is NumericalNode {
+  return (
+    node.type === "INTEGER" ||
+    node.type === "DECIMAL" ||
+    node.type === "FRACTION"
+  );
+}
+
+export function tryGetIntegerValue(node: TreeNode): bigint | null {
+  if (node.type === "INTEGER") return node.value;
+  if (node.type === "DECIMAL" && node.exponent >= 0n) {
+    return node.whole * 10n ** node.exponent;
+  }
+  return null;
 }
 
 export const POW_BITS_THRESHOLD = 50_000n;

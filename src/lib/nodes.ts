@@ -1,7 +1,7 @@
 import { gcd } from "#math/gcd";
 
 import { EvaluatorError } from "./evaluator";
-import { isNegative } from "./shared";
+import { isNegative, isNumerical } from "./shared";
 
 export type BinaryOpType =
   | "ADD"
@@ -304,14 +304,6 @@ export class FunctionCall extends BaseNode<"FUNCTION"> {
   toString(): string {
     return `${this.name}(${this.args.map((n) => n.toString()).join(", ")})`;
   }
-}
-
-export function isNumerical(node: TreeNode): node is NumericalNode {
-  return (
-    node.type === "INTEGER" ||
-    node.type === "DECIMAL" ||
-    node.type === "FRACTION"
-  );
 }
 
 export type NumericalNode = Integer | Decimal | Fraction;
