@@ -54,6 +54,13 @@ describe("parse", () => {
       expect(() => parse("1)")).toThrow(ParserError);
       expect(() => parse("2 3")).toThrow(ParserError);
       expect(() => parse("pi 2")).toThrow(ParserError);
+      expect(() => parse(",")).toThrow(ParserError);
+    });
+
+    it("handles incorrect functions", () => {
+      expect(() => parse("sqrt()")).toThrow(ParserError);
+      expect(() => parse("sqrt(4")).toThrow(ParserError);
+      expect(() => parse("sqrt 4")).toThrow(ParserError);
     });
   });
 });
