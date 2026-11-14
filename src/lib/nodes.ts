@@ -3,18 +3,20 @@ import { gcd } from "#math/gcd";
 import { EvaluatorError } from "./evaluator";
 import { isNegative } from "./shared";
 
-type DefinedNodeType =
-  | "INTEGER"
-  | "DECIMAL"
-  | "FRACTION"
-  | "SYMBOL"
-  | "FUNCTION"
+export type BinaryOpType =
   | "ADD"
   | "SUBTRACT"
   | "MULTIPLY"
   | "DIVIDE"
   | "MOD"
   | "POWER";
+type DefinedNodeType =
+  | "INTEGER"
+  | "DECIMAL"
+  | "FRACTION"
+  | "SYMBOL"
+  | "FUNCTION"
+  | BinaryOpType;
 
 type NodeType = DefinedNodeType | "UNDEFINED";
 

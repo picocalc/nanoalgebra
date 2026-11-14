@@ -1,7 +1,12 @@
 import { powBitLength } from "bigint.bitlength";
 
 import { AlgebraError } from "./errors";
-import type { DefinedNode, NumericalNode, TreeNode } from "./nodes";
+import type {
+  BinaryOpType,
+  DefinedNode,
+  NumericalNode,
+  TreeNode,
+} from "./nodes";
 import {
   Add,
   Decimal,
@@ -31,13 +36,6 @@ export class EvaluatorError extends AlgebraError {
 }
 
 type SymbolDomain = "positive" | "negative" | "real" | "complex";
-type BinaryOpType =
-  | "ADD"
-  | "SUBTRACT"
-  | "MULTIPLY"
-  | "DIVIDE"
-  | "MOD"
-  | "POWER";
 
 export interface EvaluatorOptions {
   constants?: ReadonlyMap<string, SymbolDomain>;
