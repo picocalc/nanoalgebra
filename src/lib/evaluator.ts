@@ -255,7 +255,7 @@ export class Evaluator {
   }
 
   private withCoeff(
-    coeff: NumericalNode | Power,
+    coeff: TreeNode,
     body: TreeNode,
     simplify = false,
   ): TreeNode {
@@ -737,12 +737,12 @@ export class Evaluator {
       : this.normalizeFraction(num ** e, den ** e);
   }
 
-  private evaluateNumericAbs(node: NumericalNode): NumericalNode {
+  private evaluateNumericAbs(node: NumericalNode): TreeNode {
     if (!isNegative(node)) return node;
     if (node.type === "DECIMAL") {
       return Evaluator.normalizeDecimal(-node.whole, node.exponent);
     }
-    return negate(node) as NumericalNode;
+    return negate(node);
   }
 
   private static normalizeDecimal(
