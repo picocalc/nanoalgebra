@@ -340,6 +340,16 @@ export class Evaluator {
     return factors.length === 1 ? factors[0] : undefined;
   }
 
+  private hasSameFactors(
+    f1: readonly TreeNode[],
+    f2: readonly TreeNode[],
+  ): boolean {
+    if (f1.length !== f2.length) return false;
+    const s1 = f1.map((f) => f.print()).sort();
+    const s2 = f2.map((f) => f.print()).sort();
+    return s1.every((val, i) => val === s2[i]);
+  }
+
   private tryCombineTerms(
     left: DefinedNode,
     right: DefinedNode,
@@ -348,11 +358,7 @@ export class Evaluator {
     const t1 = this.extractFactors(left);
     const t2 = this.extractFactors(right);
 
-    if (
-      t1.factors.length > 0 &&
-      t1.factors.length === t2.factors.length &&
-      t1.factors.every((f, i) => f.print() === t2.factors[i]?.print())
-    ) {
+    if (this.hasSameFactors(t1.factors, t2.factors)) {
       return this.buildTerm(
         this.evaluateNumericBinary(t1.coeff, t2.coeff, op),
         t1.factors,
@@ -438,6 +444,31 @@ export class Evaluator {
     return null;
   }
 
+  private getZeroGuard(node: TreeNode): TreeNode {
+    return node.type === "FUNCTION" && node.name === "abs"
+      ? node.args[0]
+      : node;
+  }
+
+  private hasDenominatorGuard(
+    guard: TreeNode,
+    denFactors: readonly TreeNode[],
+    denUsed: readonly boolean[],
+    skipIndex: number,
+  ): boolean {
+    const guardStr = guard.print();
+    return denFactors.some((factor, idx) => {
+      if (idx === skipIndex || denUsed[idx]) return false;
+      const info = this.getBaseAndExp(factor);
+      return (
+        info !== null &&
+        !isNegative(info.exp) &&
+        !isZero(info.exp) &&
+        this.getZeroGuard(info.base).print() === guardStr
+      );
+    });
+  }
+
   private tryDivideSymbolic(
     left: DefinedNode,
     right: DefinedNode,
@@ -479,7 +510,9 @@ export class Evaluator {
     if (num.factors.length === 0 || den.factors.length === 0) return null;
 
     const denFactors = [...den.factors];
-    const denUsed = Array.from({ length: denFactors.length }).fill(false);
+    const denUsed = Array.from<boolean>({ length: denFactors.length }).fill(
+      false,
+    );
     const newNumFactors: TreeNode[] = [];
     let cancelled = false;
 
@@ -504,11 +537,19 @@ export class Evaluator {
           "SUBTRACT",
         );
 
-        if (!isNegative(totalExp) && !this.isNonZero(leftInfo.base)) {
-          const guard =
-            leftInfo.base.type === "FUNCTION" && leftInfo.base.name === "abs"
-              ? leftInfo.base.args[0]
-              : leftInfo.base;
+        const guard = this.getZeroGuard(leftInfo.base);
+        const hasOtherGuard = this.hasDenominatorGuard(
+          guard,
+          denFactors,
+          denUsed,
+          j,
+        );
+
+        if (
+          !isNegative(totalExp) &&
+          !this.isNonZero(leftInfo.base) &&
+          !hasOtherGuard
+        ) {
           const isSameGuard = guard.print() === leftInfo.base.print();
           const rightFrac = Evaluator.toFraction(rightInfo.exp);
           if (isSameGuard && rightFrac.numerator <= rightFrac.denominator) {

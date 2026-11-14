@@ -479,6 +479,9 @@ describe("evaluate", () => {
       expect(simplify("5e - 3e").print()).toBe("2e");
       expect(simplify("2e - e").print()).toBe("e");
       expect(simplify("e - 2e").print()).toBe("-e");
+
+      expect(simplify("e * pi - e * pi").print()).toBe("0");
+      expect(simplify("e * pi - pi * e").print()).toBe("0");
     });
 
     it("handles combination of exponentiation, addition and subtraction of constants", () => {
@@ -662,6 +665,8 @@ describe("evaluate", () => {
       expect(simplify("0 / x").print()).toBe("0 / x");
       expect(simplify("x^2 / x").print()).toBe("x^2 / x");
       expect(simplify("x / abs(x)").print()).toBe("x / abs(x)");
+      expect(simplify("x^2 / (abs(x) * x)").print()).toBe("x / abs(x)");
+      expect(simplify("x^2 / (x * abs(x))").print()).toBe("x / abs(x)");
       expect(simplify("x^2 / x^2").print()).toBe("x / x");
       expect(simplify("2x^2 / x^2").print()).toBe("2x / x");
       expect(simplify("x^3 / x^2").print()).toBe("x^2 / x");
