@@ -33,4 +33,10 @@ export function isZero(node: TreeNode): boolean {
   return false;
 }
 
+export function isOne(node: TreeNode): boolean {
+  if (node.type === "INTEGER") return node.value === 1n;
+  if (node.type === "DECIMAL") return node.whole === 1n && node.exponent === 0n;
+  return false;
+}
+
 export const POW_BITS_THRESHOLD = 50_000n;

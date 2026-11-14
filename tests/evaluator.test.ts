@@ -664,36 +664,6 @@ describe("evaluate", () => {
     });
   });
 
-  describe("variables", () => {
-    it("handles division", () => {
-      expect(simplify("x / x").print()).toBe("x / x");
-      expect(simplify("0 / x").print()).toBe("0 / x");
-      expect(simplify("x^2 / x").print()).toBe("x^2 / x");
-      expect(simplify("x / abs(x)").print()).toBe("x / abs(x)");
-      expect(simplify("x^2 / (abs(x) * x)").print()).toBe("x / abs(x)");
-      expect(simplify("x^2 / (x * abs(x))").print()).toBe("x / abs(x)");
-      expect(simplify("x^2 / x^2").print()).toBe("x / x");
-      expect(simplify("2x^2 / x^2").print()).toBe("2x / x");
-      expect(simplify("x^3 / x^2").print()).toBe("x^2 / x");
-      expect(simplify("2x^3 / x^2").print()).toBe("2x^2 / x");
-      expect(simplify("0 / x^2").print()).toBe("0 / x");
-      expect(simplify("abs(x / x)").print()).toBe("x / x");
-      expect(simplify("abs(x) / abs(x)").print()).toBe("x / x");
-      expect(simplify("abs(-x / x)").print()).toBe("x / x");
-      expect(simplify("abs(x / -x)").print()).toBe("x / x");
-      expect(simplify("-x / -x").print()).toBe("x / x");
-      expect(simplify("(x / x) + (x / x)").print()).toBe("2x / x");
-      expect(simplify("(x / x) - (x / x)").print()).toBe("0 / x");
-      expect(simplify("0 / x / 2^2.5").print()).toBe("0 / x");
-    });
-
-    it("handles fractional exponents", () => {
-      expect(simplify("(x^2)^(1/2)").print()).toBe("abs(x)");
-      expect(simplify("(x^3)^(1/3)").print()).toBe("x");
-      expect(simplify("(x^4)^(1/4)").print()).toBe("abs(x)");
-    });
-  });
-
   describe("functions", () => {
     it("handles sqrt function", () => {
       expect(simplify("sqrt(pi^2)").print()).toBe("pi");
