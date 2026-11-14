@@ -288,7 +288,7 @@ export class Evaluator {
     body: TreeNode,
     simplify = false,
   ): TreeNode {
-    if (isZero(coeff)) return Evaluator.ZERO;
+    if (isZero(coeff) && !simplify) return Evaluator.ZERO;
     if (this.isOne(coeff)) return body;
     if (this.isOne(body)) return coeff;
     const mul = new Multiply(coeff, body);
@@ -298,12 +298,14 @@ export class Evaluator {
   private buildTerm(
     coeff: NumericalNode,
     factors: readonly TreeNode[],
+    simplify = false,
   ): TreeNode {
-    if (isZero(coeff)) return Evaluator.ZERO;
     if (factors.length === 0) return coeff;
+    if (isZero(coeff) && !simplify) return Evaluator.ZERO;
     return this.withCoeff(
       coeff,
       factors.reduce((acc, f) => new Multiply(acc, f)),
+      simplify,
     );
   }
 
@@ -354,6 +356,7 @@ export class Evaluator {
       return this.buildTerm(
         this.evaluateNumericBinary(t1.coeff, t2.coeff, op),
         t1.factors,
+        true,
       );
     }
     return null;
