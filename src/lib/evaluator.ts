@@ -29,13 +29,21 @@ export class EvaluatorError extends AlgebraError {
   }
 }
 
-export interface EvaluatorOptions {
-  constants?: ReadonlyMap<string, true>;
+interface EvaluatorConstant {
+  positive: true;
 }
 
-export const constants: ReadonlyMap<string, true> = new Map([
-  ["pi", true],
-  ["e", true],
+export interface EvaluatorOptions {
+  constants?: ReadonlyMap<string, EvaluatorConstant>;
+  complex?: boolean;
+}
+
+export const constants: ReadonlyMap<string, EvaluatorConstant> = new Map<
+  string,
+  EvaluatorConstant
+>([
+  ["pi", { positive: true }],
+  ["e", { positive: true }],
 ]);
 
 export class Evaluator {
@@ -193,20 +201,8 @@ export class Evaluator {
     if (isNumerical(node)) {
       return this.evaluateNumericAbs(node);
     }
-    if (node.type === "SYMBOL") {
-      if (this.options.constants?.has(node.name)) {
-        return node;
-      }
-      return new FunctionCall("abs", [node]);
-    }
-    if (node.type === "FUNCTION" && node.name === "abs") {
+    if (this.isPositive(node)) {
       return node;
-    }
-    if (node.type === "POWER") {
-      const expInt = this.tryGetIntegerValue(node.right);
-      if (expInt !== null && expInt > 0n && expInt % 2n === 0n) {
-        return node;
-      }
     }
     return new FunctionCall("abs", [node]);
   }
@@ -217,7 +213,7 @@ export class Evaluator {
       return frac.numerator >= 0n;
     }
     if (node.type === "SYMBOL") {
-      return !!this.options.constants?.has(node.name);
+      return !!this.options.constants?.get(node.name)?.positive;
     }
     if (node.type === "FUNCTION" && node.name === "abs") {
       return true;
@@ -234,6 +230,12 @@ export class Evaluator {
 
   private isOne(node: TreeNode): boolean {
     return this.tryGetIntegerValue(node) === 1n;
+  }
+
+  private isEvenRoot(exp: TreeNode): boolean {
+    if (!isNumerical(exp)) return false;
+    const frac = Evaluator.toFraction(exp);
+    return frac.denominator % 2n === 0n;
   }
 
   private extractTerm(
@@ -332,6 +334,24 @@ export class Evaluator {
       );
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
 
+      if (
+        !this.options.complex &&
+        !this.isPositive(leftInfo.base) &&
+        (this.isEvenRoot(leftInfo.exp) || this.isEvenRoot(rightInfo.exp)) &&
+        !this.isEvenRoot(totalExp)
+      ) {
+        if (
+          t1.symbolNode &&
+          t2.symbolNode &&
+          t1.symbolNode.print() === t2.symbolNode.print()
+        ) {
+          const squared = new Power(t1.symbolNode, new Integer(2));
+          if (this.isOne(combinedCoeff)) return squared;
+          return new Multiply(combinedCoeff, squared);
+        }
+        return null;
+      }
+
       const result = isZero(totalExp)
         ? new Integer(1)
         : this.isOne(totalExp)
@@ -340,7 +360,7 @@ export class Evaluator {
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
-      return new Multiply(combinedCoeff, result);
+      return this.simplify(new Multiply(combinedCoeff, result));
     }
 
     return null;
@@ -373,6 +393,15 @@ export class Evaluator {
       );
       const combinedCoeff = this.evaluateNumericDivide(t1.coeff, t2.coeff);
 
+      if (
+        !this.options.complex &&
+        !this.isPositive(leftInfo.base) &&
+        (this.isEvenRoot(leftInfo.exp) || this.isEvenRoot(rightInfo.exp)) &&
+        !this.isEvenRoot(totalExp)
+      ) {
+        return null;
+      }
+
       const result = isZero(totalExp)
         ? new Integer(1)
         : this.isOne(totalExp)
@@ -381,7 +410,7 @@ export class Evaluator {
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
-      return new Multiply(combinedCoeff, result);
+      return this.simplify(new Multiply(combinedCoeff, result));
     }
 
     if (t1.symbolNode && t2.symbolNode === null) {
@@ -417,7 +446,19 @@ export class Evaluator {
         if (this.isPositive(innerBase)) {
           return innerBase;
         }
+        if (this.options.complex) {
+          return null;
+        }
         return this.simplify(new FunctionCall("abs", [innerBase]));
+      }
+
+      if (
+        !this.options.complex &&
+        !this.isPositive(innerBase) &&
+        this.isEvenRoot(innerExp) &&
+        !this.isEvenRoot(newExp)
+      ) {
+        return null;
       }
 
       return this.simplify(new Power(innerBase, newExp));

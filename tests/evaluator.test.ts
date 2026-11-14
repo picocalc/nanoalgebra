@@ -1,6 +1,7 @@
 import { describe, it, expect } from "bun:test";
 
 import { Evaluator } from "#lib/evaluator";
+import { functions } from "#lib/parser";
 import { simplify } from "#src";
 
 function expectUndefined(expression: string) {
@@ -641,9 +642,13 @@ describe("evaluate", () => {
   describe("functions", () => {
     it("handles sqrt function", () => {
       expect(simplify("sqrt(pi^2)").print()).toBe("pi");
+      expect(simplify("sqrt(pi)^2").print()).toBe("pi");
       expect(simplify("sqrt(x)").print()).toBe("x^(1/2)");
       expect(simplify("sqrt(x^2)").print()).toBe("abs(x)");
       expect(simplify("sqrt(x^4)").print()).toBe("x^2");
+      expect(simplify("sqrt(x)^2").print()).toBe("(x^(1/2))^2");
+      expect(simplify("sqrt(-1) * sqrt(-1)").print()).toBe("((-1)^(1/2))^2");
+      expect(simplify("sqrt(-1)^4").print()).toBe("((-1)^(1/2))^4");
     });
 
     it("handles abs function", () => {
@@ -651,13 +656,17 @@ describe("evaluate", () => {
       expect(simplify("abs(-2)").print()).toBe("2");
       expect(simplify("abs(pi)").print()).toBe("pi");
       expect(simplify("abs(pi^2)").print()).toBe("pi^2");
+      expect(simplify("abs(e^pi)").print()).toBe("e^pi");
       expect(simplify("abs(abs(pi))").print()).toBe("pi");
 
       expect(simplify("abs(x)").print()).toBe("abs(x)");
       expect(simplify("abs(x^2)").print()).toBe("x^2");
+      expect(simplify("abs(2^x)").print()).toBe("2^x");
+      expect(simplify("abs(e^x)").print()).toBe("e^x");
       expect(simplify("abs(x)^2").print()).toBe("x^2");
       expect(simplify("abs(x^4)").print()).toBe("x^4");
       expect(simplify("abs(x)^4").print()).toBe("x^4");
+      expect(simplify("abs(x^x)").print()).toBe("abs(x^x)");
       expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
     });
 
@@ -667,6 +676,16 @@ describe("evaluate", () => {
       expect(simplify("fn(2 * 2, 5-3)", { functions }).print()).toBe(
         "fn(4, 2)",
       );
+    });
+  });
+
+  describe("complex domain", () => {
+    it("handles square root of negatives", () => {
+      const options = { complex: true, functions };
+      expect(simplify("sqrt(-1) * sqrt(-1)", options).print()).toBe("-1");
+      expect(simplify("sqrt(-1) * -sqrt(-1)", options).print()).toBe("1");
+      expect(simplify("sqrt(-1)^4", options).print()).toBe("1");
+      expect(simplify("sqrt(x)^2", options).print()).toBe("x");
     });
   });
 });
