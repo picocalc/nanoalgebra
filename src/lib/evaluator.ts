@@ -294,7 +294,9 @@ export class Evaluator {
     if (
       node.type === "MULTIPLY" &&
       isNumerical(node.left) &&
-      (node.right.type === "SYMBOL" || node.right.type === "POWER")
+      (node.right.type === "SYMBOL" ||
+        node.right.type === "POWER" ||
+        node.right.type === "FUNCTION")
     ) {
       return { coeff: node.left, symbolNode: node.right };
     }
@@ -331,7 +333,7 @@ export class Evaluator {
   private getBaseAndExp(
     node: TreeNode,
   ): { base: TreeNode; exp: NumericalNode } | null {
-    if (node.type === "SYMBOL") {
+    if (node.type === "SYMBOL" || node.type === "FUNCTION") {
       return { base: node, exp: new Integer(1) };
     }
     if (node.type === "POWER" && isNumerical(node.right)) {
@@ -344,6 +346,25 @@ export class Evaluator {
     left: DefinedNode,
     right: DefinedNode,
   ): TreeNode | null {
+    if (left.type === "DIVIDE" && right.type === "DIVIDE") {
+      return this.simplify(
+        new Divide(
+          new Multiply(left.left, right.left),
+          new Multiply(left.right, right.right),
+        ),
+      );
+    }
+    if (left.type === "DIVIDE") {
+      return this.simplify(
+        new Divide(new Multiply(left.left, right), left.right),
+      );
+    }
+    if (right.type === "DIVIDE") {
+      return this.simplify(
+        new Divide(new Multiply(left, right.left), right.right),
+      );
+    }
+
     const t1 = this.extractTerm(left);
     const t2 = this.extractTerm(right);
 
@@ -415,6 +436,12 @@ export class Evaluator {
     left: DefinedNode,
     right: DefinedNode,
   ): TreeNode | null {
+    if (left.type === "DIVIDE") {
+      return this.simplify(
+        new Divide(left.left, new Multiply(left.right, right)),
+      );
+    }
+
     const t1 = this.extractTerm(left);
     const t2 = this.extractTerm(right);
 
