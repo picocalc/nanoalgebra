@@ -107,8 +107,10 @@ export class Evaluator {
           isZero(right)
         )
           return new Undefined(simplified);
-        if (isZero(left)) return new Integer(0);
         if (this.isOne(right)) return left;
+        if (isZero(left)) {
+          return this.isNonZero(right) ? new Integer(0) : simplified;
+        }
 
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericDivide(left, right);

@@ -534,6 +534,9 @@ describe("evaluate", () => {
     });
 
     it("handles division of constants", () => {
+      expect(simplify("0/pi").print()).toBe("0");
+      expect(simplify("0/e").print()).toBe("0");
+
       expect(simplify("pi / 1").print()).toBe("pi");
       expect(simplify("e / 1").print()).toBe("e");
       expect(simplify("2pi / 1").print()).toBe("2pi");
@@ -639,6 +642,7 @@ describe("evaluate", () => {
   describe("variables", () => {
     it("handles division", () => {
       expect(simplify("x / x").print()).toBe("x / x");
+      expect(simplify("0 / x").print()).toBe("0 / x");
     });
 
     it("handles fractional exponents", () => {
