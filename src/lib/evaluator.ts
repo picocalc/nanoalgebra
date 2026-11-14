@@ -104,7 +104,9 @@ export class Evaluator {
           return new Undefined(simplified);
         if (this.isOne(right)) return left;
         if (isZero(left)) {
-          return this.isNonZero(right) ? new Integer(0) : simplified;
+          if (this.isNonZero(right)) return new Integer(0);
+          const den = this.simplifyZeroNumeratorDenominator(right);
+          return den === right ? simplified : new Divide(left, den);
         }
 
         if (isNumerical(left) && isNumerical(right)) {
@@ -220,9 +222,6 @@ export class Evaluator {
     if (node.type === "POWER") {
       return this.isNonZero(node.left);
     }
-    if (node.type === "MULTIPLY") {
-      return this.isNonZero(node.left) && this.isNonZero(node.right);
-    }
     return false;
   }
 
@@ -234,17 +233,6 @@ export class Evaluator {
       return (
         domain === "positive" || domain === "negative" || domain === "real"
       );
-    }
-    if (node.type === "FUNCTION" && node.name === "abs") {
-      return true;
-    }
-    if (node.type === "POWER") {
-      if (this.isReal(node.left)) {
-        const expInt = this.tryGetIntegerValue(node.right);
-        if (expInt !== null) return true;
-        if (this.isPositive(node.left) && this.isReal(node.right)) return true;
-      }
-      return false;
     }
     return false;
   }
@@ -503,7 +491,8 @@ export class Evaluator {
       return null;
     }
 
-    const denUsed = Array.from({ length: den.factors.length }).fill(false);
+    const denFactors = [...den.factors];
+    const denUsed = Array.from({ length: denFactors.length }).fill(false);
     const newNumFactors: TreeNode[] = [];
     let cancelled = false;
 
@@ -515,9 +504,9 @@ export class Evaluator {
       }
 
       let matched = false;
-      for (let j = 0; j < den.factors.length; j++) {
+      for (let j = 0; j < denFactors.length; j++) {
         if (denUsed[j]) continue;
-        const rightInfo = this.getBaseAndExp(den.factors[j]);
+        const rightInfo = this.getBaseAndExp(denFactors[j]);
         if (!rightInfo || leftInfo.base.print() !== rightInfo.base.print()) {
           continue;
         }
@@ -538,7 +527,25 @@ export class Evaluator {
         }
 
         if (!isNegative(totalExp) && !this.isNonZero(leftInfo.base)) {
-          continue;
+          const rightFrac = Evaluator.toFraction(rightInfo.exp);
+          if (rightFrac.numerator <= rightFrac.denominator) {
+            continue;
+          }
+
+          const newNumExp = this.evaluateNumericBinary(
+            totalExp,
+            new Integer(1),
+            "ADD",
+          );
+          denFactors[j] = leftInfo.base;
+          cancelled = true;
+          matched = true;
+          newNumFactors.push(
+            this.isOne(newNumExp)
+              ? leftInfo.base
+              : this.simplify(new Power(leftInfo.base, newNumExp)),
+          );
+          break;
         }
 
         denUsed[j] = true;
@@ -579,7 +586,7 @@ export class Evaluator {
         : this.simplify(new Multiply(combinedCoeff, prod));
     }
 
-    const remainingDen = den.factors.filter((_, idx) => !denUsed[idx]);
+    const remainingDen = denFactors.filter((_, idx) => !denUsed[idx]);
     if (remainingDen.length === 0) {
       return numNode;
     }
@@ -588,6 +595,45 @@ export class Evaluator {
       this.simplify(new Multiply(acc, f)),
     );
     return this.simplify(new Divide(numNode, denProd));
+  }
+
+  private simplifyZeroNumeratorDenominator(den: DefinedNode): TreeNode {
+    const { coeff, factors } = this.extractFactors(den);
+    if (factors.length === 0) return den;
+
+    let changed = !this.isOne(coeff);
+    const reducedFactors: TreeNode[] = [];
+
+    for (const factor of factors) {
+      if (this.isNonZero(factor)) {
+        changed = true;
+        continue;
+      }
+
+      if (factor.type === "POWER" && isNumerical(factor.right)) {
+        const base = factor.left;
+        const expFrac = Evaluator.toFraction(factor.right);
+        const isUnsafeEvenRoot =
+          !this.options.complex &&
+          !this.isPositive(base) &&
+          this.isEvenRoot(factor.right);
+
+        if (!isUnsafeEvenRoot && expFrac.numerator > expFrac.denominator) {
+          reducedFactors.push(base);
+          changed = true;
+          continue;
+        }
+      }
+
+      reducedFactors.push(factor);
+    }
+
+    if (!changed) return den;
+    if (reducedFactors.length === 0) return new Integer(1);
+
+    return reducedFactors.reduce((acc, f) =>
+      this.simplify(new Multiply(acc, f)),
+    );
   }
 
   private tryExponentiateSymbolic(
