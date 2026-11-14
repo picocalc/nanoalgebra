@@ -632,6 +632,10 @@ describe("evaluate", () => {
   });
 
   describe("variables", () => {
+    it("handles division", () => {
+      expect(simplify("x/x").print()).toBe("x/x");
+    });
+
     it("handles fractional exponents", () => {
       expect(simplify("(x^2)^(1/2)").print()).toBe("abs(x)");
       expect(simplify("(x^3)^(1/3)").print()).toBe("x");
@@ -680,12 +684,34 @@ describe("evaluate", () => {
   });
 
   describe("complex domain", () => {
-    it("handles square root of negatives", () => {
-      const options = { complex: true, functions };
+    const options = { complex: true, functions };
+
+    it("handles square root of negatives and powers of roots", () => {
       expect(simplify("sqrt(-1) * sqrt(-1)", options).print()).toBe("-1");
       expect(simplify("sqrt(-1) * -sqrt(-1)", options).print()).toBe("1");
       expect(simplify("sqrt(-1)^4", options).print()).toBe("1");
-      expect(simplify("sqrt(x)^2", options).print()).toBe("x");
+      expect(simplify("sqrt(z)^2", options).print()).toBe("z");
+      expect(simplify("(z^(1/2))^2", options).print()).toBe("z");
+    });
+
+    it("does not apply real-only root and power simplifications", () => {
+      expect(simplify("(z^2)^(1/2)", options).print()).toBe("(z^2)^(1/2)");
+      expect(simplify("(z^3)^(1/3)", options).print()).toBe("(z^3)^(1/3)");
+      expect(simplify("sqrt(z^2)", options).print()).toBe("(z^2)^(1/2)");
+      expect(simplify("sqrt(z^4)", options).print()).toBe("(z^4)^(1/2)");
+    });
+
+    it("does not strip abs() from expressions that are only positive in R", () => {
+      expect(simplify("abs(z^2)", options).print()).toBe("abs(z^2)");
+      expect(simplify("abs(z)^2", options).print()).toBe("abs(z)^2");
+      expect(simplify("abs(2^z)", options).print()).toBe("abs(2^z)");
+      expect(simplify("abs(e^z)", options).print()).toBe("abs(e^z)");
+    });
+
+    it("still simplifies known positive real constants", () => {
+      expect(simplify("sqrt(pi^2)", options).print()).toBe("pi");
+      expect(simplify("abs(pi)", options).print()).toBe("pi");
+      expect(simplify("abs(e^pi)", options).print()).toBe("e^pi");
     });
   });
 });

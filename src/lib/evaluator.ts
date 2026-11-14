@@ -31,6 +31,7 @@ export class EvaluatorError extends AlgebraError {
 
 interface EvaluatorConstant {
   positive: true;
+  real: true;
 }
 
 export interface EvaluatorOptions {
@@ -42,8 +43,8 @@ export const constants: ReadonlyMap<string, EvaluatorConstant> = new Map<
   string,
   EvaluatorConstant
 >([
-  ["pi", { positive: true }],
-  ["e", { positive: true }],
+  ["pi", { positive: true, real: true }],
+  ["e", { positive: true, real: true }],
 ]);
 
 export class Evaluator {
