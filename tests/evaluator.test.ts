@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import { Evaluator } from "#lib/evaluator";
+import { constants, Evaluator } from "#lib/evaluator";
 import { functions } from "#lib/parser";
 import { simplify } from "#src";
 
@@ -684,7 +684,7 @@ describe("evaluate", () => {
   });
 
   describe("complex domain", () => {
-    const options = { complex: true, functions };
+    const options = { complex: true, constants, functions };
 
     it("handles square root of negatives and powers of roots", () => {
       expect(simplify("sqrt(-1) * sqrt(-1)", options).print()).toBe("-1");
