@@ -201,7 +201,6 @@ export class Evaluator {
         return this.withCoeff(
           this.evaluateNumericAbs(coeff),
           this.evaluateAbs(this.multiplyAll(factors)),
-          true,
         );
       }
     }
@@ -257,7 +256,7 @@ export class Evaluator {
   private withCoeff(
     coeff: TreeNode,
     body: TreeNode,
-    simplify = false,
+    simplify = true,
   ): TreeNode {
     if (isZero(coeff) && !simplify) return Evaluator.ZERO;
     if (isOne(coeff)) return body;
@@ -269,14 +268,13 @@ export class Evaluator {
   private buildTerm(
     coeff: NumericalNode,
     factors: readonly TreeNode[],
-    simplify = false,
   ): TreeNode {
     if (factors.length === 0) return coeff;
-    if (isZero(coeff) && !simplify) return Evaluator.ZERO;
+    if (isZero(coeff)) return Evaluator.ZERO;
     return this.withCoeff(
       coeff,
       factors.reduce((acc, f) => new Multiply(acc, f)),
-      simplify,
+      false,
     );
   }
 
@@ -333,7 +331,6 @@ export class Evaluator {
       return this.buildTerm(
         this.evaluateNumericBinary(t1.coeff, t2.coeff, op),
         t1.factors,
-        true,
       );
     }
     return null;
@@ -445,7 +442,7 @@ export class Evaluator {
     const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
     return newFactors.length === 0
       ? combinedCoeff
-      : this.withCoeff(combinedCoeff, this.multiplyAll(newFactors), true);
+      : this.withCoeff(combinedCoeff, this.multiplyAll(newFactors));
   }
 
   private tryDivideSymbolic(
@@ -475,7 +472,6 @@ export class Evaluator {
       return this.withCoeff(
         this.evaluateNumericDivide(num.coeff, den.coeff),
         this.makePower(rightInfo.base, totalExp),
-        true,
       );
     }
 
@@ -536,7 +532,7 @@ export class Evaluator {
     const numNode =
       newNumFactors.length === 0
         ? combinedCoeff
-        : this.withCoeff(combinedCoeff, this.multiplyAll(newNumFactors), true);
+        : this.withCoeff(combinedCoeff, this.multiplyAll(newNumFactors));
 
     const remainingDen = denFactors.filter((_, idx) => !denUsed[idx]);
     return remainingDen.length === 0
@@ -591,7 +587,6 @@ export class Evaluator {
         return this.withCoeff(
           this.evaluatePower(coeff, expInt),
           this.simplify(new Power(single, right)),
-          true,
         );
       }
     }
