@@ -633,7 +633,7 @@ describe("evaluate", () => {
 
   describe("variables", () => {
     it("handles division", () => {
-      expect(simplify("x/x").print()).toBe("x/x");
+      expect(simplify("x / x").print()).toBe("x / x");
     });
 
     it("handles fractional exponents", () => {

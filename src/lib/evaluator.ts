@@ -146,7 +146,8 @@ export class Evaluator {
           left.type === "FUNCTION" &&
           left.name === "abs" &&
           expInt !== null &&
-          expInt % 2n === 0n
+          expInt % 2n === 0n &&
+          (!this.options.complex || this.isReal(left.args[0]))
         ) {
           return this.simplify(new Power(left.args[0], right));
         }
@@ -205,6 +206,46 @@ export class Evaluator {
     return new FunctionCall("abs", [node]);
   }
 
+  private isNonZero(node: TreeNode): boolean {
+    if (isNumerical(node)) {
+      return !isZero(node);
+    }
+    if (node.type === "SYMBOL") {
+      const domain = this.options.constants?.get(node.name);
+      return domain === "positive" || domain === "negative";
+    }
+    if (node.type === "POWER") {
+      return this.isNonZero(node.left);
+    }
+    if (node.type === "MULTIPLY") {
+      return this.isNonZero(node.left) && this.isNonZero(node.right);
+    }
+    return false;
+  }
+
+  private isReal(node: TreeNode): boolean {
+    if (!this.options.complex) return true;
+    if (isNumerical(node)) return true;
+    if (node.type === "SYMBOL") {
+      const domain = this.options.constants?.get(node.name);
+      return (
+        domain === "positive" || domain === "negative" || domain === "real"
+      );
+    }
+    if (node.type === "FUNCTION" && node.name === "abs") {
+      return true;
+    }
+    if (node.type === "POWER") {
+      if (this.isReal(node.left)) {
+        const expInt = this.tryGetIntegerValue(node.right);
+        if (expInt !== null) return true;
+        if (this.isPositive(node.left) && this.isReal(node.right)) return true;
+      }
+      return false;
+    }
+    return false;
+  }
+
   private isPositive(node: TreeNode): boolean {
     if (isNumerical(node)) {
       const frac = Evaluator.toFraction(node);
@@ -218,10 +259,10 @@ export class Evaluator {
     }
     if (node.type === "POWER") {
       const expInt = this.tryGetIntegerValue(node.right);
-      if (expInt !== null && expInt % 2n === 0n) {
+      if (expInt !== null && expInt % 2n === 0n && this.isReal(node.left)) {
         return true;
       }
-      return this.isPositive(node.left);
+      return this.isPositive(node.left) && this.isReal(node.right);
     }
     return false;
   }
@@ -400,6 +441,10 @@ export class Evaluator {
         return null;
       }
 
+      if (isZero(totalExp) && !this.isNonZero(leftInfo.base)) {
+        return null;
+      }
+
       const result = isZero(totalExp)
         ? new Integer(1)
         : this.isOne(totalExp)
@@ -448,6 +493,14 @@ export class Evaluator {
           return null;
         }
         return this.simplify(new FunctionCall("abs", [innerBase]));
+      }
+
+      if (
+        this.options.complex &&
+        !this.isPositive(innerBase) &&
+        expInt === null
+      ) {
+        return null;
       }
 
       if (
