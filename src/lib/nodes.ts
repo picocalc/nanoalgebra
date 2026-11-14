@@ -8,6 +8,7 @@ type DefinedNodeType =
   | "DECIMAL"
   | "FRACTION"
   | "SYMBOL"
+  | "FUNCTION"
   | "ADD"
   | "SUBTRACT"
   | "MULTIPLY"
@@ -21,6 +22,7 @@ const PRECEDENCE = {
   INTEGER: 4,
   DECIMAL: 4,
   SYMBOL: 4,
+  FUNCTION: 4,
   POWER: 3,
   MULTIPLY: 2,
   FRACTION: 2,
@@ -67,7 +69,7 @@ export class Undefined extends BaseNode<"UNDEFINED"> {
     return this.node.print();
   }
   toString(): string {
-    return "UNDEFINED";
+    return "undefined";
   }
 }
 
@@ -286,6 +288,22 @@ export class SymbolNode extends BaseNode<"SYMBOL"> {
   }
 }
 
+export class FunctionCall extends BaseNode<"FUNCTION"> {
+  constructor(
+    readonly name: string,
+    readonly args: readonly [TreeNode, ...TreeNode[]],
+  ) {
+    super("FUNCTION");
+  }
+
+  print(): string {
+    return `${this.name}(${this.args.map((n) => n.print()).join(", ")})`;
+  }
+  toString(): string {
+    return `${this.name}(${this.args.map((n) => n.toString()).join(", ")})`;
+  }
+}
+
 export function isNumerical(node: TreeNode): node is NumericalNode {
   return (
     node.type === "INTEGER" ||
@@ -298,7 +316,7 @@ export type NumericalNode = Integer | Decimal | Fraction;
 
 export type BinaryNode = Add | Subtract | Multiply | Divide | Modulo | Power;
 
-export type SymbolicNode = SymbolNode | BinaryNode;
+export type SymbolicNode = SymbolNode | FunctionCall | BinaryNode;
 
 export type DefinedNode = NumericalNode | SymbolicNode;
 

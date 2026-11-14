@@ -1,14 +1,15 @@
 import { describe, it, expect } from "bun:test";
 
-import { Evaluator } from "#lib/evaluator";
+import { constants, Evaluator } from "#lib/evaluator";
+import { functions } from "#lib/parser";
 import { simplify } from "#src";
 
 function expectUndefined(expression: string) {
   const simplified = simplify(expression);
-  expect(simplified.toString()).toBe("UNDEFINED");
+  expect(simplified.toString()).toBe("undefined");
   const printed = simplified.print();
   const doubleSimplified = simplify(printed);
-  expect(doubleSimplified.toString()).toBe("UNDEFINED");
+  expect(doubleSimplified.toString()).toBe("undefined");
   expect(doubleSimplified.print()).toBe(printed);
   return expect(printed);
 }
@@ -456,7 +457,7 @@ describe("evaluate", () => {
       expect(simplify("0 - (-e)").print()).toBe("e");
     });
 
-    it("handles combination of multiplication and addition and subtraction of constants", () => {
+    it("handles combination of multiplication, addition and subtraction of constants", () => {
       expect(simplify("2pi + 3pi").print()).toBe("5pi");
       expect(simplify("2pi + pi").print()).toBe("3pi");
       expect(simplify("(pi * 2) + pi").print()).toBe("3pi");
@@ -480,7 +481,7 @@ describe("evaluate", () => {
       expect(simplify("e - 2e").print()).toBe("-e");
     });
 
-    it("handles combination of exponentiation and addition and subtraction of constants", () => {
+    it("handles combination of exponentiation, addition and subtraction of constants", () => {
       expect(simplify("0 + pi^2").print()).toBe("pi^2");
       expect(simplify("pi^2 + 0").print()).toBe("pi^2");
       expect(simplify("0 - pi^2").print()).toBe("-pi^2");
@@ -533,6 +534,9 @@ describe("evaluate", () => {
     });
 
     it("handles division of constants", () => {
+      expect(simplify("0/pi").print()).toBe("0");
+      expect(simplify("0/e").print()).toBe("0");
+
       expect(simplify("pi / 1").print()).toBe("pi");
       expect(simplify("e / 1").print()).toBe("e");
       expect(simplify("2pi / 1").print()).toBe("2pi");
@@ -587,13 +591,35 @@ describe("evaluate", () => {
       expect(simplify("(pi/2)^3").print()).toBe("pi^3/8");
     });
 
-    it("handles combination of exponentiation, division, addition and subtraction of constants", () => {
+    it("handles combination of exponentiation, division, multiplication, addition and subtraction of constants", () => {
       expect(simplify("pi^-1 + 1/pi").print()).toBe("2pi^-1");
       expect(simplify("1/pi + pi^-1").print()).toBe("2pi^-1");
       expect(simplify("pi^-1 - 1/pi").print()).toBe("0");
       expect(simplify("1/pi - pi^-1").print()).toBe("0");
       expect(simplify("pi(pi / pi^2)").print()).toBe("1");
+
+      expect(simplify("e / pi^2").print()).toBe("e / pi^2");
+      expect(simplify("e / pi / pi").print()).toBe("e / pi^2");
+      expect(simplify("e^2 / pi").print()).toBe("e^2 / pi");
+      expect(simplify("e * (e / pi)").print()).toBe("e^2 / pi");
       expect(simplify("pi(2pi / pi^2)").print()).toBe("2");
+      expect(simplify("e * pi / pi").print()).toBe("e");
+      expect(simplify("e / pi * pi").print()).toBe("e");
+      expect(simplify("(e / pi) / (e / pi)").print()).toBe("1");
+      expect(simplify("(2e / pi) / (2e / pi)").print()).toBe("1");
+      expect(simplify("(2e / pi) / (e / 2pi)").print()).toBe("4");
+      expect(simplify("(e * pi) / (e * pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (2e * pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (e * 2pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (2e * pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (e * 2pi)").print()).toBe("1");
+      expect(simplify("(e / pi) * (pi / e)").print()).toBe("1");
+      expect(simplify("(2e / pi) * (2pi / e)").print()).toBe("4");
+      expect(simplify("(2e / pi) * (pi / 2e)").print()).toBe("1");
+
+      expect(simplify("0 / -pi").print()).toBe("0");
+      expect(simplify("0 / 2pi").print()).toBe("0");
+      expect(simplify("0 / (pi / 2)").print()).toBe("0");
     });
 
     it("handles exponentiation of constants", () => {
@@ -627,6 +653,118 @@ describe("evaluate", () => {
       expect(simplify("(pi^2)^3").print()).toBe("pi^6");
 
       expect(simplify("(pi^4)^(1/2)").print()).toBe("pi^2");
+    });
+  });
+
+  describe("variables", () => {
+    it("handles division", () => {
+      expect(simplify("x / x").print()).toBe("x / x");
+      expect(simplify("0 / x").print()).toBe("0 / x");
+      expect(simplify("x^2 / x").print()).toBe("x^2 / x");
+      expect(simplify("x / abs(x)").print()).toBe("x / abs(x)");
+      expect(simplify("x^2 / x^2").print()).toBe("x / x");
+      expect(simplify("2x^2 / x^2").print()).toBe("2x / x");
+      expect(simplify("x^3 / x^2").print()).toBe("x^2 / x");
+      expect(simplify("2x^3 / x^2").print()).toBe("2x^2 / x");
+      expect(simplify("0 / x^2").print()).toBe("0 / x");
+      expect(simplify("abs(x / x)").print()).toBe("x / x");
+      expect(simplify("abs(x) / abs(x)").print()).toBe("x / x");
+      expect(simplify("abs(-x / x)").print()).toBe("x / x");
+      expect(simplify("abs(x / -x)").print()).toBe("x / x");
+      expect(simplify("-x / -x").print()).toBe("x / x");
+      expect(simplify("(x / x) + (x / x)").print()).toBe("2x / x");
+      expect(simplify("(x / x) - (x / x)").print()).toBe("0 / x");
+    });
+
+    it("handles fractional exponents", () => {
+      expect(simplify("(x^2)^(1/2)").print()).toBe("abs(x)");
+      expect(simplify("(x^3)^(1/3)").print()).toBe("x");
+      expect(simplify("(x^4)^(1/4)").print()).toBe("abs(x)");
+    });
+  });
+
+  describe("functions", () => {
+    it("handles sqrt function", () => {
+      expect(simplify("sqrt(pi^2)").print()).toBe("pi");
+      expect(simplify("sqrt(pi)^2").print()).toBe("pi");
+      expect(simplify("sqrt(x)").print()).toBe("x^(1/2)");
+      expect(simplify("sqrt(x^2)").print()).toBe("abs(x)");
+      expect(simplify("sqrt(x^4)").print()).toBe("x^2");
+      expect(simplify("sqrt(x)^2").print()).toBe("(x^(1/2))^2");
+      expect(simplify("sqrt(2) * sqrt(2)").print()).toBe("2");
+      expect(simplify("sqrt(2)^2").print()).toBe("2");
+      expect(simplify("sqrt(-1) * sqrt(-1)").print()).toBe("((-1)^(1/2))^2");
+      expect(simplify("sqrt(-1)^4").print()).toBe("((-1)^(1/2))^4");
+    });
+
+    it("handles abs function", () => {
+      expect(simplify("abs(2)").print()).toBe("2");
+      expect(simplify("abs(-2)").print()).toBe("2");
+      expect(simplify("abs(-0.5)").print()).toBe("0.5");
+      expect(simplify("abs(-1/2)").print()).toBe("1/2");
+      expect(simplify("abs(pi)").print()).toBe("pi");
+      expect(simplify("abs(pi^2)").print()).toBe("pi^2");
+      expect(simplify("abs(pi)^2").print()).toBe("pi^2");
+      expect(simplify("abs(e^pi)").print()).toBe("e^pi");
+      expect(simplify("abs(abs(pi))").print()).toBe("pi");
+      expect(simplify("abs(pi) * abs(pi)").print()).toBe("pi^2");
+
+      expect(simplify("abs(x)").print()).toBe("abs(x)");
+      expect(simplify("abs(x^2)").print()).toBe("x^2");
+      expect(simplify("abs(2^x)").print()).toBe("2^x");
+      expect(simplify("abs(e^x)").print()).toBe("e^x");
+      expect(simplify("abs(x)^2").print()).toBe("x^2");
+      expect(simplify("abs(x) * abs(x)").print()).toBe("x^2");
+      expect(simplify("abs(x^4)").print()).toBe("x^4");
+      expect(simplify("abs(x)^4").print()).toBe("x^4");
+      expect(simplify("abs(x^x)").print()).toBe("abs(x^x)");
+      expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
+      expect(simplify("abs(-abs(x))").print()).toBe("abs(x)");
+      expect(simplify("abs(2x)").print()).toBe("2 * abs(x)");
+    });
+
+    it("handles custom functions", () => {
+      const functions = new Set(["fn"]);
+      expect(simplify("fn(1 + 1)", { functions }).print()).toBe("fn(2)");
+      expect(simplify("fn(2 * 2, 5-3)", { functions }).print()).toBe(
+        "fn(4, 2)",
+      );
+    });
+  });
+
+  describe("complex domain", () => {
+    const options = { complex: true, constants, functions };
+
+    it("handles square root of negatives and powers of roots", () => {
+      expect(simplify("sqrt(-1) * sqrt(-1)", options).print()).toBe("-1");
+      expect(simplify("sqrt(-1) * -sqrt(-1)", options).print()).toBe("1");
+      expect(simplify("sqrt(-1)^4", options).print()).toBe("1");
+    });
+
+    it("handles fractional exponents in complex domain", () => {
+      expect(simplify("(z^(1/2))^2", options).print()).toBe("z");
+      expect(simplify("(z^2)^(1/2)", options).print()).toBe("(z^2)^(1/2)");
+      expect(simplify("(z^3)^(1/3)", options).print()).toBe("(z^3)^(1/3)");
+    });
+
+    it("handles sqrt function in complex domain", () => {
+      expect(simplify("sqrt(z)^2", options).print()).toBe("z");
+      expect(simplify("sqrt(z^2)", options).print()).toBe("(z^2)^(1/2)");
+      expect(simplify("sqrt(z^4)", options).print()).toBe("(z^4)^(1/2)");
+      expect(simplify("sqrt(pi^2)", options).print()).toBe("pi");
+    });
+
+    it("handles abs function in complex domain", () => {
+      expect(simplify("abs(z^2)", options).print()).toBe("abs(z^2)");
+      expect(simplify("abs(z)^2", options).print()).toBe("abs(z)^2");
+      expect(simplify("abs(z) * abs(z)", options).print()).toBe("abs(z)^2");
+      expect(simplify("abs(2^z)", options).print()).toBe("abs(2^z)");
+      expect(simplify("abs(e^z)", options).print()).toBe("abs(e^z)");
+      expect(simplify("abs(pi)", options).print()).toBe("pi");
+      expect(simplify("abs(e^pi)", options).print()).toBe("e^pi");
+      expect(simplify("abs(abs(z))", options).print()).toBe("abs(z)");
+      expect(simplify("abs(-abs(z))", options).print()).toBe("abs(z)");
+      expect(simplify("abs(2z)", options).print()).toBe("2 * abs(z)");
     });
   });
 });

@@ -22,22 +22,21 @@ export interface TokenIdentifier extends TokenBase {
   id: string;
 }
 
-export type TokenBinaryOperator =
-  | { type: "MUL"; pos: number }
-  | { type: "DIV"; pos: number }
-  | { type: "POW"; pos: number }
-  | { type: "MOD"; pos: number };
+interface TokenBinaryOperator {
+  type: "PLUS" | "MINUS" | "MUL" | "DIV" | "POW" | "MOD";
+  pos: number;
+}
+
+interface TokenCharacter {
+  type: "FACTORIAL" | "PIPE" | "LPAREN" | "RPAREN" | "COMMA" | "SEMICOLON";
+  pos: number;
+}
 
 export type Token =
   | TokenNumber
   | TokenIdentifier
   | TokenBinaryOperator
-  | { type: "PLUS"; pos: number }
-  | { type: "MINUS"; pos: number }
-  | { type: "FACTORIAL"; pos: number }
-  | { type: "PIPE"; pos: number }
-  | { type: "LPAREN"; pos: number }
-  | { type: "RPAREN"; pos: number };
+  | TokenCharacter;
 
 type TokenType = Exclude<Token, TokenNumber | TokenIdentifier>["type"];
 
@@ -51,10 +50,6 @@ function isDigit(ch?: string): ch is Digit {
 function isAlpha(ch?: string): boolean {
   if (ch === undefined) return false;
   return ch >= "a" && ch <= "z";
-}
-
-export interface LexerOptions {
-  readonly decimalSeparator?: "." | ",";
 }
 
 /**
@@ -73,16 +68,14 @@ const CHAR_MAP: Record<string, TokenType> = {
   "!": "FACTORIAL",
   "|": "PIPE",
   "%": "MOD",
+  ",": "COMMA",
+  ";": "SEMICOLON",
 };
 
 /**
  * Simple lexer (tokenizer).
  */
-export function tokenize(
-  expression: string,
-  options: LexerOptions = {},
-): Token[] {
-  const { decimalSeparator = "." } = options;
+export function tokenize(expression: string): Token[] {
   const tokens: Token[] = [];
   const length = expression.length;
 
@@ -99,7 +92,7 @@ export function tokenize(
 
     if (ch === " ") continue;
 
-    if (isDigit(ch) || ch === decimalSeparator) {
+    if (isDigit(ch) || ch === ".") {
       let whole = "";
       let fraction: string | undefined = undefined;
       let exponent: string | undefined = undefined;
@@ -110,7 +103,7 @@ export function tokenize(
         return expression.slice(start, index);
       };
 
-      if (ch === decimalSeparator) {
+      if (ch === ".") {
         whole = "0";
         index++;
         fraction = consumeDigits();
@@ -119,7 +112,7 @@ export function tokenize(
         }
       } else {
         whole = consumeDigits();
-        if (index < length && expression[index] === decimalSeparator) {
+        if (index < length && expression[index] === ".") {
           index++;
           fraction = consumeDigits();
         }
@@ -146,7 +139,7 @@ export function tokenize(
       }
 
       // Final check for trailing separators
-      if (index < length && expression[index] === decimalSeparator) {
+      if (index < length && expression[index] === ".") {
         throw new LexerError("Invalid decimal number format", index);
       }
 
