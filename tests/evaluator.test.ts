@@ -603,6 +603,8 @@ describe("evaluate", () => {
       expect(simplify("e^2 / pi").print()).toBe("e^2 / pi");
       expect(simplify("e * (e / pi)").print()).toBe("e^2 / pi");
       expect(simplify("pi(2pi / pi^2)").print()).toBe("2");
+      expect(simplify("e * pi / pi").print()).toBe("e");
+      expect(simplify("e / pi * pi").print()).toBe("e");
     });
 
     it("handles exponentiation of constants", () => {
@@ -643,6 +645,8 @@ describe("evaluate", () => {
     it("handles division", () => {
       expect(simplify("x / x").print()).toBe("x / x");
       expect(simplify("0 / x").print()).toBe("0 / x");
+      expect(simplify("x^2 / x").print()).toBe("x^2 / x");
+      expect(simplify("x / abs(x)").print()).toBe("x / abs(x)");
     });
 
     it("handles fractional exponents", () => {

@@ -1,12 +1,7 @@
 import { powBitLength } from "bigint.bitlength";
 
 import { AlgebraError } from "./errors";
-import type {
-  NumericalNode,
-  SymbolicNode,
-  DefinedNode,
-  TreeNode,
-} from "./nodes";
+import type { NumericalNode, DefinedNode, TreeNode } from "./nodes";
 import {
   Add,
   Decimal,
@@ -21,7 +16,7 @@ import {
   Subtract,
   Undefined,
 } from "./nodes";
-import { isZero, negate, POW_BITS_THRESHOLD } from "./shared";
+import { isNegative, isZero, negate, POW_BITS_THRESHOLD } from "./shared";
 
 export class EvaluatorError extends AlgebraError {
   constructor(message: string) {
@@ -285,24 +280,35 @@ export class Evaluator {
     return frac.denominator % 2n === 0n;
   }
 
-  private extractTerm(
-    node: TreeNode,
-  ):
-    | { coeff: NumericalNode; symbolNode: SymbolicNode | null }
-    | { coeff: Integer; symbolNode: TreeNode } {
+  private extractFactors(node: TreeNode): {
+    coeff: NumericalNode;
+    factors: TreeNode[];
+  } {
     if (isNumerical(node)) {
-      return { coeff: node, symbolNode: null };
+      return { coeff: node, factors: [] };
     }
-    if (
-      node.type === "MULTIPLY" &&
-      isNumerical(node.left) &&
-      (node.right.type === "SYMBOL" ||
-        node.right.type === "POWER" ||
-        node.right.type === "FUNCTION")
-    ) {
-      return { coeff: node.left, symbolNode: node.right };
+    if (node.type === "MULTIPLY") {
+      const left = this.extractFactors(node.left);
+      const right = this.extractFactors(node.right);
+      const coeff = this.isOne(left.coeff)
+        ? right.coeff
+        : this.isOne(right.coeff)
+          ? left.coeff
+          : this.evaluateNumericMultiply(left.coeff, right.coeff);
+      return {
+        coeff,
+        factors: [...left.factors, ...right.factors],
+      };
     }
-    return { coeff: new Integer(1), symbolNode: node };
+    return { coeff: new Integer(1), factors: [node] };
+  }
+
+  private joinFactors(factors: TreeNode[]): TreeNode {
+    return factors.reduce((acc, f) => new Multiply(acc, f));
+  }
+
+  private singleFactor(factors: readonly TreeNode[]): TreeNode | undefined {
+    return factors.length === 1 ? factors[0] : undefined;
   }
 
   private tryCombineTerms(
@@ -310,13 +316,13 @@ export class Evaluator {
     right: DefinedNode,
     op: "ADD" | "SUBTRACT",
   ): TreeNode | null {
-    const t1 = this.extractTerm(left);
-    const t2 = this.extractTerm(right);
+    const t1 = this.extractFactors(left);
+    const t2 = this.extractFactors(right);
 
     if (
-      t1.symbolNode &&
-      t2.symbolNode &&
-      t1.symbolNode.print() === t2.symbolNode.print()
+      t1.factors.length > 0 &&
+      t1.factors.length === t2.factors.length &&
+      t1.factors.every((f, i) => f.print() === t2.factors[i]?.print())
     ) {
       const newCoeff = this.evaluateNumericBinary(
         t1.coeff,
@@ -325,16 +331,18 @@ export class Evaluator {
       );
 
       if (isZero(newCoeff)) return new Integer(0);
-      if (this.isOne(newCoeff)) return t1.symbolNode;
-      return new Multiply(newCoeff, t1.symbolNode);
+      const body = this.joinFactors(t1.factors);
+      if (this.isOne(newCoeff)) return body;
+      return new Multiply(newCoeff, body);
     }
 
     return null;
   }
 
   private getBaseAndExp(
-    node: TreeNode,
+    node: TreeNode | undefined,
   ): { base: TreeNode; exp: NumericalNode } | null {
+    if (!node) return null;
     if (node.type === "SYMBOL" || node.type === "FUNCTION") {
       return { base: node, exp: new Integer(1) };
     }
@@ -367,28 +375,32 @@ export class Evaluator {
       );
     }
 
-    const t1 = this.extractTerm(left);
-    const t2 = this.extractTerm(right);
+    const t1 = this.extractFactors(left);
+    const t2 = this.extractFactors(right);
 
-    if (t1.symbolNode === null && t2.symbolNode !== null) {
+    if (t1.factors.length === 0 && t2.factors.length > 0) {
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
       if (isZero(combinedCoeff)) return new Integer(0);
-      if (this.isOne(combinedCoeff)) return t2.symbolNode;
-      return new Multiply(combinedCoeff, t2.symbolNode);
+      const body = this.joinFactors(t2.factors);
+      if (this.isOne(combinedCoeff)) return body;
+      return new Multiply(combinedCoeff, body);
     }
-    if (t2.symbolNode === null && t1.symbolNode !== null) {
+    if (t2.factors.length === 0 && t1.factors.length > 0) {
       const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
       if (isZero(combinedCoeff)) return new Integer(0);
-      if (this.isOne(combinedCoeff)) return t1.symbolNode;
-      return new Multiply(combinedCoeff, t1.symbolNode);
+      const body = this.joinFactors(t1.factors);
+      if (this.isOne(combinedCoeff)) return body;
+      return new Multiply(combinedCoeff, body);
     }
 
     if (left.print() === right.print() && left.type === "SYMBOL") {
       return new Power(left, new Integer(2));
     }
 
-    const leftInfo = t1.symbolNode ? this.getBaseAndExp(t1.symbolNode) : null;
-    const rightInfo = t2.symbolNode ? this.getBaseAndExp(t2.symbolNode) : null;
+    const s1 = this.singleFactor(t1.factors);
+    const s2 = this.singleFactor(t2.factors);
+    const leftInfo = this.getBaseAndExp(s1);
+    const rightInfo = this.getBaseAndExp(s2);
 
     if (
       leftInfo &&
@@ -408,12 +420,8 @@ export class Evaluator {
         (this.isEvenRoot(leftInfo.exp) || this.isEvenRoot(rightInfo.exp)) &&
         !this.isEvenRoot(totalExp)
       ) {
-        if (
-          t1.symbolNode &&
-          t2.symbolNode &&
-          t1.symbolNode.print() === t2.symbolNode.print()
-        ) {
-          const squared = new Power(t1.symbolNode, new Integer(2));
+        if (s1 && s2 && s1.print() === s2.print()) {
+          const squared = new Power(s1, new Integer(2));
           if (this.isOne(combinedCoeff)) return squared;
           return new Multiply(combinedCoeff, squared);
         }
@@ -444,61 +452,142 @@ export class Evaluator {
       );
     }
 
-    const t1 = this.extractTerm(left);
-    const t2 = this.extractTerm(right);
+    const num = this.extractFactors(left);
+    const den = this.extractFactors(right);
 
-    const rightInfo = t2.symbolNode ? this.getBaseAndExp(t2.symbolNode) : null;
+    const singleDen = this.singleFactor(den.factors);
+    if (num.factors.length === 0 && singleDen) {
+      const rightInfo = this.getBaseAndExp(singleDen);
+      if (!rightInfo) return null;
 
-    const leftInfo = t1.symbolNode
-      ? this.getBaseAndExp(t1.symbolNode)
-      : rightInfo
-        ? { base: rightInfo.base, exp: new Integer(0) }
-        : null;
-
-    if (
-      leftInfo &&
-      rightInfo &&
-      leftInfo.base.print() === rightInfo.base.print()
-    ) {
       const totalExp = this.evaluateNumericBinary(
-        leftInfo.exp,
+        new Integer(0),
         rightInfo.exp,
         "SUBTRACT",
       );
-      const combinedCoeff = this.evaluateNumericDivide(t1.coeff, t2.coeff);
+      const combinedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
 
       if (
         !this.options.complex &&
-        !this.isPositive(leftInfo.base) &&
-        (this.isEvenRoot(leftInfo.exp) || this.isEvenRoot(rightInfo.exp)) &&
+        !this.isPositive(rightInfo.base) &&
+        this.isEvenRoot(rightInfo.exp) &&
         !this.isEvenRoot(totalExp)
       ) {
         return null;
       }
 
-      if (isZero(totalExp) && !this.isNonZero(leftInfo.base)) {
+      if (!isNegative(totalExp) && !this.isNonZero(rightInfo.base)) {
         return null;
       }
 
       const result = isZero(totalExp)
         ? new Integer(1)
         : this.isOne(totalExp)
-          ? leftInfo.base
-          : this.simplify(new Power(leftInfo.base, totalExp));
+          ? rightInfo.base
+          : this.simplify(new Power(rightInfo.base, totalExp));
 
       if (this.isOne(combinedCoeff)) return result;
       if (this.isOne(result)) return combinedCoeff;
       return this.simplify(new Multiply(combinedCoeff, result));
     }
 
-    if (t1.symbolNode && t2.symbolNode === null) {
-      const reducedCoeff = this.evaluateNumericDivide(t1.coeff, t2.coeff);
+    if (num.factors.length > 0 && den.factors.length === 0) {
+      const reducedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
       if (isZero(reducedCoeff)) return new Integer(0);
-      if (this.isOne(reducedCoeff)) return t1.symbolNode;
-      return new Multiply(reducedCoeff, t1.symbolNode);
+      const body = this.joinFactors(num.factors);
+      if (this.isOne(reducedCoeff)) return body;
+      return new Multiply(reducedCoeff, body);
     }
 
-    return null;
+    if (num.factors.length === 0 || den.factors.length === 0) {
+      return null;
+    }
+
+    const denUsed = Array.from({ length: den.factors.length }).fill(false);
+    const newNumFactors: TreeNode[] = [];
+    let cancelled = false;
+
+    for (const numFactor of num.factors) {
+      const leftInfo = this.getBaseAndExp(numFactor);
+      if (!leftInfo) {
+        newNumFactors.push(numFactor);
+        continue;
+      }
+
+      let matched = false;
+      for (let j = 0; j < den.factors.length; j++) {
+        if (denUsed[j]) continue;
+        const rightInfo = this.getBaseAndExp(den.factors[j]);
+        if (!rightInfo || leftInfo.base.print() !== rightInfo.base.print()) {
+          continue;
+        }
+
+        const totalExp = this.evaluateNumericBinary(
+          leftInfo.exp,
+          rightInfo.exp,
+          "SUBTRACT",
+        );
+
+        if (
+          !this.options.complex &&
+          !this.isPositive(leftInfo.base) &&
+          (this.isEvenRoot(leftInfo.exp) || this.isEvenRoot(rightInfo.exp)) &&
+          !this.isEvenRoot(totalExp)
+        ) {
+          continue;
+        }
+
+        if (!isNegative(totalExp) && !this.isNonZero(leftInfo.base)) {
+          continue;
+        }
+
+        denUsed[j] = true;
+        cancelled = true;
+        matched = true;
+
+        if (!isZero(totalExp)) {
+          newNumFactors.push(
+            this.isOne(totalExp)
+              ? leftInfo.base
+              : this.simplify(new Power(leftInfo.base, totalExp)),
+          );
+        }
+        break;
+      }
+
+      if (!matched) {
+        newNumFactors.push(numFactor);
+      }
+    }
+
+    if (!cancelled) {
+      return null;
+    }
+
+    const combinedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
+    if (isZero(combinedCoeff)) return new Integer(0);
+
+    let numNode: TreeNode;
+    if (newNumFactors.length === 0) {
+      numNode = combinedCoeff;
+    } else {
+      const prod = newNumFactors.reduce((acc, f) =>
+        this.simplify(new Multiply(acc, f)),
+      );
+      numNode = this.isOne(combinedCoeff)
+        ? prod
+        : this.simplify(new Multiply(combinedCoeff, prod));
+    }
+
+    const remainingDen = den.factors.filter((_, idx) => !denUsed[idx]);
+    if (remainingDen.length === 0) {
+      return numNode;
+    }
+
+    const denProd = remainingDen.reduce((acc, f) =>
+      this.simplify(new Multiply(acc, f)),
+    );
+    return this.simplify(new Divide(numNode, denProd));
   }
 
   private tryExponentiateSymbolic(
@@ -551,11 +640,11 @@ export class Evaluator {
     }
 
     if (left.type === "MULTIPLY" && expInt !== null && expInt !== 0n) {
-      const lTerm = this.extractTerm(left.left);
-      const rTerm = this.extractTerm(left.right);
-      if (lTerm.symbolNode === null && rTerm.symbolNode !== null) {
-        const newCoeff = this.evaluatePower(lTerm.coeff, expInt);
-        const newPower = this.simplify(new Power(rTerm.symbolNode, right));
+      const { coeff, factors } = this.extractFactors(left);
+      const single = this.singleFactor(factors);
+      if (!this.isOne(coeff) && single) {
+        const newCoeff = this.evaluatePower(coeff, expInt);
+        const newPower = this.simplify(new Power(single, right));
         if (this.isOne(newCoeff)) return newPower;
         return this.simplify(new Multiply(newCoeff, newPower));
       }
