@@ -2,6 +2,7 @@ import { powBitLength } from "bigint.bitlength";
 
 import { AlgebraError } from "./errors";
 import type {
+  BinaryNode,
   BinaryOpType,
   DefinedNode,
   NumericalNode,
@@ -88,9 +89,7 @@ export class Evaluator {
     }
   }
 
-  private simplifyBinary(
-    node: Extract<TreeNode, { type: BinaryOpType }>,
-  ): TreeNode {
+  private simplifyBinary(node: BinaryNode): TreeNode {
     const left = this.simplify(node.left);
     const right = this.simplify(node.right);
     const simplified = this.rebuildBinary(node.type, left, right);
