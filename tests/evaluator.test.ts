@@ -651,7 +651,9 @@ describe("evaluate", () => {
       expect(simplify("x^2 / x").print()).toBe("x^2 / x");
       expect(simplify("x / abs(x)").print()).toBe("x / abs(x)");
       expect(simplify("x^2 / x^2").print()).toBe("x / x");
+      expect(simplify("2x^2 / x^2").print()).toBe("2x / x");
       expect(simplify("x^3 / x^2").print()).toBe("x^2 / x");
+      expect(simplify("2x^3 / x^2").print()).toBe("2x^2 / x");
       expect(simplify("0 / x^2").print()).toBe("0 / x");
     });
 
