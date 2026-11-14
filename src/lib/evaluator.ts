@@ -739,9 +739,6 @@ export class Evaluator {
 
   private evaluateNumericAbs(node: NumericalNode): TreeNode {
     if (!isNegative(node)) return node;
-    if (node.type === "DECIMAL") {
-      return Evaluator.normalizeDecimal(-node.whole, node.exponent);
-    }
     return negate(node);
   }
 
