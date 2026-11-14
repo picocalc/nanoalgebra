@@ -651,6 +651,8 @@ describe("evaluate", () => {
       expect(simplify("sqrt(x^2)").print()).toBe("abs(x)");
       expect(simplify("sqrt(x^4)").print()).toBe("x^2");
       expect(simplify("sqrt(x)^2").print()).toBe("(x^(1/2))^2");
+      expect(simplify("sqrt(2) * sqrt(2)").print()).toBe("2");
+      expect(simplify("sqrt(2)^2").print()).toBe("2");
       expect(simplify("sqrt(-1) * sqrt(-1)").print()).toBe("((-1)^(1/2))^2");
       expect(simplify("sqrt(-1)^4").print()).toBe("((-1)^(1/2))^4");
     });
