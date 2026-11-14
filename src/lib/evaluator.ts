@@ -222,6 +222,9 @@ export class Evaluator {
     if (node.type === "POWER") {
       return this.isNonZero(node.left);
     }
+    if (node.type === "FUNCTION" && node.name === "abs") {
+      return this.isNonZero(node.args[0]);
+    }
     return false;
   }
 
@@ -247,6 +250,12 @@ export class Evaluator {
     }
     if (node.type === "FUNCTION" && node.name === "abs") {
       return true;
+    }
+    if (node.type === "DIVIDE") {
+      return (
+        node.left.print() === node.right.print() ||
+        (this.isPositive(node.left) && this.isPositive(node.right))
+      );
     }
     if (node.type === "POWER") {
       const expInt = this.tryGetIntegerValue(node.right);
@@ -527,24 +536,42 @@ export class Evaluator {
         }
 
         if (!isNegative(totalExp) && !this.isNonZero(leftInfo.base)) {
+          const guard =
+            leftInfo.base.type === "FUNCTION" && leftInfo.base.name === "abs"
+              ? leftInfo.base.args[0]
+              : leftInfo.base;
+          const isSameGuard = guard.print() === leftInfo.base.print();
           const rightFrac = Evaluator.toFraction(rightInfo.exp);
-          if (rightFrac.numerator <= rightFrac.denominator) {
+
+          if (isSameGuard && rightFrac.numerator <= rightFrac.denominator) {
             continue;
           }
 
-          const newNumExp = this.evaluateNumericBinary(
-            totalExp,
-            new Integer(1),
-            "ADD",
-          );
-          denFactors[j] = leftInfo.base;
+          denFactors[j] = guard;
           cancelled = true;
           matched = true;
-          newNumFactors.push(
-            this.isOne(newNumExp)
-              ? leftInfo.base
-              : this.simplify(new Power(leftInfo.base, newNumExp)),
-          );
+
+          if (isSameGuard) {
+            const newNumExp = this.evaluateNumericBinary(
+              totalExp,
+              new Integer(1),
+              "ADD",
+            );
+            newNumFactors.push(
+              this.isOne(newNumExp)
+                ? leftInfo.base
+                : this.simplify(new Power(leftInfo.base, newNumExp)),
+            );
+          } else {
+            if (!isZero(totalExp)) {
+              newNumFactors.push(
+                this.isOne(totalExp)
+                  ? leftInfo.base
+                  : this.simplify(new Power(leftInfo.base, totalExp)),
+              );
+            }
+            newNumFactors.push(guard);
+          }
           break;
         }
 
