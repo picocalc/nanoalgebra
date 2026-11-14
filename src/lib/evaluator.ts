@@ -561,6 +561,10 @@ export class Evaluator {
     const reducedFactors: TreeNode[] = [];
 
     for (const factor of factors) {
+      if (this.isNonZero(factor)) {
+        changed = true;
+        continue;
+      }
       if (factor.type === "POWER" && isNumerical(factor.right)) {
         const expFrac = Evaluator.toFraction(factor.right);
         const isUnsafeEvenRoot =
