@@ -262,7 +262,7 @@ export class Evaluator {
     body: TreeNode,
     simplify = true,
   ): TreeNode {
-    if (isZero(coeff) && !simplify) return Evaluator.ZERO;
+    if (isZero(coeff)) return Evaluator.ZERO;
     if (isOne(coeff)) return body;
     if (isOne(body)) return coeff;
     const mul = new Multiply(coeff, body);
