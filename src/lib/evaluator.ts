@@ -203,6 +203,12 @@ export class Evaluator {
     if (this.isPositive(node)) {
       return node;
     }
+    if (node.type === "MULTIPLY" && isNumerical(node.left)) {
+      const absCoeff = this.evaluateNumericAbs(node.left);
+      const absRight = this.evaluateAbs(node.right);
+      if (this.isOne(absCoeff)) return absRight;
+      return this.simplify(new Multiply(absCoeff, absRight));
+    }
     return new FunctionCall("abs", [node]);
   }
 

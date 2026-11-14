@@ -673,6 +673,7 @@ describe("evaluate", () => {
       expect(simplify("abs(x^x)").print()).toBe("abs(x^x)");
       expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
       expect(simplify("abs(-abs(x))").print()).toBe("abs(x)");
+      expect(simplify("abs(2x)").print()).toBe("2 * abs(x)");
     });
 
     it("handles custom functions", () => {
@@ -715,6 +716,7 @@ describe("evaluate", () => {
       expect(simplify("abs(e^pi)", options).print()).toBe("e^pi");
       expect(simplify("abs(abs(z))", options).print()).toBe("abs(z)");
       expect(simplify("abs(-abs(z))", options).print()).toBe("abs(z)");
+      expect(simplify("abs(2z)", options).print()).toBe("2 * abs(z)");
     });
   });
 });
