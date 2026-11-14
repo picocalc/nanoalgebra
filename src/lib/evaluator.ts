@@ -484,8 +484,7 @@ export class Evaluator {
 
     if (num.factors.length === 0 || den.factors.length === 0) return null;
 
-    const denFactors = [...den.factors];
-    const denUsed = Array.from<boolean>({ length: denFactors.length }).fill(
+    const denUsed = Array.from<boolean>({ length: den.factors.length }).fill(
       false,
     );
     const newNumFactors: TreeNode[] = [];
@@ -499,9 +498,9 @@ export class Evaluator {
       }
 
       let matched = false;
-      for (let j = 0; j < denFactors.length; j++) {
+      for (let j = 0; j < den.factors.length; j++) {
         if (denUsed[j]) continue;
-        const rightInfo = this.getBaseAndExp(denFactors[j]);
+        const rightInfo = this.getBaseAndExp(den.factors[j]);
         if (!rightInfo || leftInfo.base.print() !== rightInfo.base.print()) {
           continue;
         }
@@ -534,7 +533,7 @@ export class Evaluator {
         ? combinedCoeff
         : this.withCoeff(combinedCoeff, this.multiplyAll(newNumFactors));
 
-    const remainingDen = denFactors.filter((_, idx) => !denUsed[idx]);
+    const remainingDen = den.factors.filter((_, idx) => !denUsed[idx]);
     return remainingDen.length === 0
       ? numNode
       : this.simplify(new Divide(numNode, this.multiplyAll(remainingDen)));
