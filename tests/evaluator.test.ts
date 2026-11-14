@@ -606,8 +606,20 @@ describe("evaluate", () => {
       expect(simplify("e * pi / pi").print()).toBe("e");
       expect(simplify("e / pi * pi").print()).toBe("e");
       expect(simplify("(e / pi) / (e / pi)").print()).toBe("1");
+      expect(simplify("(2e / pi) / (2e / pi)").print()).toBe("1");
+      expect(simplify("(2e / pi) / (e / 2pi)").print()).toBe("4");
       expect(simplify("(e * pi) / (e * pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (2e * pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (e * 2pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (2e * pi)").print()).toBe("1");
+      expect(simplify("(2e * pi) / (e * 2pi)").print()).toBe("1");
       expect(simplify("(e / pi) * (pi / e)").print()).toBe("1");
+      expect(simplify("(2e / pi) * (2pi / e)").print()).toBe("4");
+      expect(simplify("(2e / pi) * (pi / 2e)").print()).toBe("1");
+
+      expect(simplify("0 / -pi").print()).toBe("0");
+      expect(simplify("0 / 2pi").print()).toBe("0");
+      expect(simplify("0 / (pi / 2)").print()).toBe("0");
     });
 
     it("handles exponentiation of constants", () => {
@@ -686,6 +698,8 @@ describe("evaluate", () => {
     it("handles abs function", () => {
       expect(simplify("abs(2)").print()).toBe("2");
       expect(simplify("abs(-2)").print()).toBe("2");
+      expect(simplify("abs(-0.5)").print()).toBe("0.5");
+      expect(simplify("abs(-1/2)").print()).toBe("1/2");
       expect(simplify("abs(pi)").print()).toBe("pi");
       expect(simplify("abs(pi^2)").print()).toBe("pi^2");
       expect(simplify("abs(pi)^2").print()).toBe("pi^2");

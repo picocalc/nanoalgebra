@@ -226,6 +226,9 @@ export class Evaluator {
     if (isNumerical(node)) return !isZero(node);
     const domain = this.symbolDomain(node);
     if (domain) return domain === "positive" || domain === "negative";
+    if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+      return this.isNonZero(node.left) && this.isNonZero(node.right);
+    }
     if (node.type === "POWER") return this.isNonZero(node.left);
     if (node.type === "FUNCTION" && node.name === "abs") {
       return this.isNonZero(node.args[0]);
