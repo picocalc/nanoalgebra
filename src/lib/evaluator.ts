@@ -193,12 +193,25 @@ export class Evaluator {
   private evaluateAbs(node: TreeNode): TreeNode {
     if (isNumerical(node)) return this.evaluateNumericAbs(node);
     if (this.isPositive(node)) return node;
-    if (node.type === "MULTIPLY" && isNumerical(node.left)) {
-      return this.withCoeff(
-        this.evaluateNumericAbs(node.left),
-        this.evaluateAbs(node.right),
-        true,
-      );
+    if (node.type === "MULTIPLY") {
+      const { coeff, factors } = this.extractFactors(node);
+      if (!this.isOne(coeff)) {
+        return this.withCoeff(
+          this.evaluateNumericAbs(coeff),
+          this.evaluateAbs(this.multiplyAll(factors)),
+          true,
+        );
+      }
+    }
+    if (node.type === "DIVIDE") {
+      const num = this.evaluateAbs(node.left);
+      const den = this.evaluateAbs(node.right);
+      const isUnchangedAbs = (orig: TreeNode, res: TreeNode) =>
+        res.type === "FUNCTION" && res.name === "abs" && res.args[0] === orig;
+
+      if (!isUnchangedAbs(node.left, num) || !isUnchangedAbs(node.right, den)) {
+        return this.simplify(new Divide(num, den));
+      }
     }
     return new FunctionCall("abs", [node]);
   }
@@ -518,7 +531,7 @@ export class Evaluator {
       if (!matched) newNumFactors.push(numFactor);
     }
 
-    if (!cancelled) return null;
+    if (!cancelled && this.isOne(den.coeff)) return null;
 
     const combinedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
     if (isZero(combinedCoeff)) return Evaluator.ZERO;
