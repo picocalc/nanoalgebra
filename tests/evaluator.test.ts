@@ -380,6 +380,26 @@ describe("evaluate", () => {
       expect(simplify("(4pi^2)^(1/2)").print()).toBe("2pi");
       expect(simplify("(4pi^2)^0.5").print()).toBe("2pi");
     });
+
+    it("handles exponentiation of negatives to a fractional power", () => {
+      expectUndefined("sqrt(-1)").toMatchInlineSnapshot(`"(-1)^(1/2)"`);
+      expectUndefined("sqrt(-1) * sqrt(-1)").toMatchInlineSnapshot(
+        `"(-1)^(1/2) * (-1)^(1/2)"`,
+      );
+      expectUndefined("sqrt(-1)^2").toMatchInlineSnapshot(`"((-1)^(1/2))^2"`);
+      expectUndefined("sqrt(-1)^3").toMatchInlineSnapshot(`"((-1)^(1/2))^3"`);
+      expectUndefined("sqrt(-1) * sqrt(-1)^3").toMatchInlineSnapshot(
+        `"(-1)^(1/2) * ((-1)^(1/2))^3"`,
+      );
+      expectUndefined("sqrt(-1)^4").toMatchInlineSnapshot(`"((-1)^(1/2))^4"`);
+      expectUndefined("(-1)^(-1/2)").toMatchInlineSnapshot(`"(-1)^(-1/2)"`);
+      expectUndefined("abs(sqrt(-1))").toMatchInlineSnapshot(
+        `"abs((-1)^(1/2))"`,
+      );
+      expectUndefined("sqrt(sqrt(-1))").toMatchInlineSnapshot(
+        `"sqrt((-1)^(1/2))"`,
+      );
+    });
   });
 
   describe("constants", () => {
@@ -693,15 +713,9 @@ describe("evaluate", () => {
       expect(simplify("sqrt(x^2)").print()).toBe("abs(x)");
       expect(simplify("sqrt(x^4)").print()).toBe("x^2");
       expect(simplify("sqrt(x)^2").print()).toBe("(x^(1/2))^2");
+      expect(simplify("sqrt(x)^-1").print()).toBe("x^(-1/2)");
       expect(simplify("sqrt(x) * sqrt(x)^3").print()).toBe("(x^(1/2))^4");
-
-      expectUndefined("sqrt(-1)").toMatchInlineSnapshot(`"(-1)^(1/2)"`);
-      expectUndefined("sqrt(-1) * sqrt(-1)").toMatchInlineSnapshot(
-        `"(-1)^(1/2) * (-1)^(1/2)"`,
-      );
-      expectUndefined("sqrt(-1)^2").toMatchInlineSnapshot(`"((-1)^(1/2))^2"`);
-      expectUndefined("sqrt(-1)^3").toMatchInlineSnapshot(`"((-1)^(1/2))^3"`);
-      expectUndefined("sqrt(-1)^4").toMatchInlineSnapshot(`"((-1)^(1/2))^4"`);
+      expect(simplify("sqrt(x) / sqrt(x)^-1").print()).toBe("(x^(1/2))^2");
     });
 
     it("handles abs function", () => {
@@ -726,9 +740,13 @@ describe("evaluate", () => {
       expect(simplify("abs(x^4)").print()).toBe("x^4");
       expect(simplify("abs(x)^4").print()).toBe("x^4");
       expect(simplify("abs(x^x)").print()).toBe("abs(x^x)");
+      expect(simplify("(abs(x)^3)^2").print()).toBe("x^6");
+      expect(simplify("(abs(x^3))^2").print()).toBe("x^6");
       expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
       expect(simplify("abs(-abs(x))").print()).toBe("abs(x)");
       expect(simplify("abs(2x)").print()).toBe("2 * abs(x)");
+      expect(simplify("x^2 / abs(x)").print()).toBe("abs(x)");
+      expect(simplify("x^3 / abs(x)").print()).toBe("x * abs(x)");
     });
 
     it("handles custom functions", () => {
@@ -773,8 +791,8 @@ describe("evaluate", () => {
       expect(simplify("abs(abs(z))", options).print()).toBe("abs(z)");
       expect(simplify("abs(-abs(z))", options).print()).toBe("abs(z)");
       expect(simplify("abs(2z)", options).print()).toBe("2 * abs(z)");
-      expect(simplify("z^2 / abs(z)").print()).toBe("z^2 / abs(z)");
-      expect(simplify("z^3 / abs(z)").print()).toBe("z^3 / abs(z)");
+      expect(simplify("z^2 / abs(z)", options).print()).toBe("z^2 / abs(z)");
+      expect(simplify("z^3 / abs(z)", options).print()).toBe("z^3 / abs(z)");
     });
   });
 });
