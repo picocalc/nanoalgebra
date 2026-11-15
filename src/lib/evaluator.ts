@@ -169,6 +169,14 @@ export class Evaluator {
             ? new Undefined(simplified)
             : Evaluator.ZERO;
         }
+        if (
+          !this.options.complex &&
+          this.isEvenRoot(right) &&
+          ((isNumerical(left) && isNegative(left)) ||
+            this.symbolDomain(left) === "negative")
+        ) {
+          return new Undefined(simplified);
+        }
         const expInt = tryGetIntegerValue(right);
         if (expInt && isNumerical(left) && isNumerical(right)) {
           return this.evaluatePower(left, expInt);
