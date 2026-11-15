@@ -170,7 +170,7 @@ export class Evaluator {
             : Evaluator.ZERO;
         }
         const expInt = tryGetIntegerValue(right);
-        if (isNumerical(left) && isNumerical(right) && expInt) {
+        if (expInt && isNumerical(left) && isNumerical(right)) {
           return this.evaluatePower(left, expInt);
         }
         return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
@@ -258,13 +258,10 @@ export class Evaluator {
   }
 
   private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
-    if (isZero(coeff)) return coeff;
-    if (isOne(coeff)) return body;
-    if (isOne(body)) return coeff;
-    return this.simplify(new Multiply(coeff, body));
+    return this.simplify(this.makeTerm(coeff, body));
   }
 
-  private makeTerm(coeff: NumericalNode, body: TreeNode): TreeNode {
+  private makeTerm(coeff: TreeNode, body: TreeNode): TreeNode {
     if (isZero(coeff)) return coeff;
     if (isOne(coeff)) return body;
     if (isOne(body)) return coeff;
