@@ -108,10 +108,10 @@ export class Evaluator {
         }
         const t1 = this.extractFactors(left);
         const t2 = this.extractFactors(right);
-        if (this.hasSameFactors(t1.factors, t2.factors)) {
-          return this.buildTerm(
+        if (isEqual(t1.body, t2.body)) {
+          return this.withCoeff(
             this.evaluateNumericBinary(t1.coeff, t2.coeff, node.type),
-            t1.factors,
+            t1.body,
           );
         }
         if (isZero(left)) {
@@ -132,7 +132,7 @@ export class Evaluator {
       case "DIVIDE": {
         if (isZero(right)) return new Undefined(simplified);
         if (isOne(right)) return left;
-        if (isZero(left)) return Evaluator.ZERO;
+        if (isZero(left)) return left;
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericDivide(left, right);
         }
@@ -141,7 +141,7 @@ export class Evaluator {
 
       case "MOD": {
         if (isZero(right)) return new Undefined(simplified);
-        if (isZero(left)) return Evaluator.ZERO;
+        if (isZero(left)) return left;
         return isNumerical(left) && isNumerical(right)
           ? this.evaluateNumericMod(left, right)
           : simplified;
@@ -201,12 +201,9 @@ export class Evaluator {
     if (isNumerical(node)) return isNegative(node) ? negate(node) : node;
     if (this.isPositive(node)) return node;
     if (node.type === "MULTIPLY") {
-      const { coeff, factors } = this.extractFactors(node);
+      const { coeff, body } = this.extractFactors(node);
       if (!isOne(coeff)) {
-        return this.withCoeff(
-          this.evaluateAbs(coeff),
-          this.evaluateAbs(this.multiplyAll(factors)),
-        );
+        return this.withCoeff(this.evaluateAbs(coeff), this.evaluateAbs(body));
       }
     }
     return new FunctionCall("abs", [node]);
@@ -259,7 +256,7 @@ export class Evaluator {
   }
 
   private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
-    if (isZero(coeff)) return Evaluator.ZERO;
+    if (isZero(coeff)) return coeff;
     if (isOne(coeff)) return body;
     if (isOne(body)) return coeff;
     return this.simplify(new Multiply(coeff, body));
@@ -270,7 +267,7 @@ export class Evaluator {
     factors: readonly TreeNode[],
   ): TreeNode {
     if (factors.length === 0) return coeff;
-    if (isZero(coeff)) return Evaluator.ZERO;
+    if (isZero(coeff)) return coeff;
     const body = factors.reduce((acc, f) => new Multiply(acc, f));
     if (isOne(coeff)) return body;
     if (isOne(body)) return coeff;
@@ -287,31 +284,27 @@ export class Evaluator {
   private extractFactors(node: TreeNode): {
     coeff: NumericalNode;
     factors: TreeNode[];
+    body: TreeNode;
   } {
-    if (isNumerical(node)) return { coeff: node, factors: [] };
+    if (isNumerical(node)) {
+      return { coeff: node, factors: [], body: Evaluator.ONE };
+    }
     if (node.type === "MULTIPLY") {
       const left = this.extractFactors(node.left);
       const right = this.extractFactors(node.right);
       const coeff = isOne(left.coeff) ? right.coeff : left.coeff;
-      return { coeff, factors: [...left.factors, ...right.factors] };
+      const body = isOne(left.body)
+        ? right.body
+        : isOne(right.body)
+          ? left.body
+          : new Multiply(left.body, right.body);
+      return { coeff, factors: [...left.factors, ...right.factors], body };
     }
-    return { coeff: Evaluator.ONE, factors: [node] };
+    return { coeff: Evaluator.ONE, factors: [node], body: node };
   }
 
   private singleFactor(factors: readonly TreeNode[]): TreeNode | undefined {
     return factors.length === 1 ? factors[0] : undefined;
-  }
-
-  private hasSameFactors(
-    f1: readonly TreeNode[],
-    f2: readonly TreeNode[],
-  ): boolean {
-    if (f1.length !== f2.length) return false;
-    // oxlint-disable-next-line typescript/require-array-sort-compare
-    const s1 = f1.map((x) => x).sort();
-    // oxlint-disable-next-line typescript/require-array-sort-compare
-    const s2 = f2.map((x) => x).sort();
-    return s1.every((val, i) => s2[i] && isEqual(val, s2[i]));
   }
 
   private getBaseAndExp(
@@ -487,7 +480,7 @@ export class Evaluator {
     if (!cancelled && isOne(den.coeff)) return null;
 
     const combinedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
-    if (isZero(combinedCoeff)) return Evaluator.ZERO;
+    if (isZero(combinedCoeff)) return combinedCoeff;
 
     const numNode = this.withCoeff(combinedCoeff, this.multiplyAll(newFactors));
 

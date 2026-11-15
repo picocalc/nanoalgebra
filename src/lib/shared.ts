@@ -65,6 +65,12 @@ export function isEqual(left: TreeNode, right: TreeNode): boolean {
   if (left.type === "POWER" && right.type === "POWER") {
     return isEqual(left.left, right.left) && isEqual(left.right, right.right);
   }
+  if (left.type === "MULTIPLY" && right.type === "MULTIPLY") {
+    return (
+      (isEqual(left.left, right.left) && isEqual(left.right, right.right)) ||
+      (isEqual(left.left, right.right) && isEqual(left.right, right.left))
+    );
+  }
   if (left.type === "FUNCTION" && right.type === "FUNCTION") {
     return (
       left.name === right.name &&
