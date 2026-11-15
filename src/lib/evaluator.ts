@@ -258,16 +258,11 @@ export class Evaluator {
     );
   }
 
-  private withCoeff(
-    coeff: TreeNode,
-    body: TreeNode,
-    simplify = true,
-  ): TreeNode {
+  private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
     if (isZero(coeff)) return Evaluator.ZERO;
     if (isOne(coeff)) return body;
     if (isOne(body)) return coeff;
-    const mul = new Multiply(coeff, body);
-    return simplify ? this.simplify(mul) : mul;
+    return this.simplify(new Multiply(coeff, body));
   }
 
   private buildTerm(
@@ -276,15 +271,17 @@ export class Evaluator {
   ): TreeNode {
     if (factors.length === 0) return coeff;
     if (isZero(coeff)) return Evaluator.ZERO;
-    return this.withCoeff(
-      coeff,
-      factors.reduce((acc, f) => new Multiply(acc, f)),
-      false,
-    );
+    const body = factors.reduce((acc, f) => new Multiply(acc, f));
+    if (isOne(coeff)) return body;
+    if (isOne(body)) return coeff;
+    return new Multiply(coeff, body);
   }
 
   private multiplyAll(nodes: readonly TreeNode[]): TreeNode {
-    return nodes.reduce((acc, f) => this.simplify(new Multiply(acc, f)));
+    return nodes.reduce(
+      (acc, f) => this.simplify(new Multiply(acc, f)),
+      Evaluator.ONE,
+    );
   }
 
   private extractFactors(node: TreeNode): {
@@ -353,22 +350,17 @@ export class Evaluator {
       ]);
     }
 
-    const rightUsed = Array.from<boolean>({ length: t2.factors.length }).fill(
-      false,
-    );
+    const used = Array.from<boolean>({ length: t2.factors.length }).fill(false);
     const newFactors: TreeNode[] = [];
     let merged = false;
 
     for (const leftFactor of t1.factors) {
       const leftInfo = this.getBaseAndExp(leftFactor);
-      if (!leftInfo) {
-        newFactors.push(leftFactor);
-        continue;
-      }
+      if (!leftInfo) continue;
 
       let matched = false;
       for (const [j, rightFactor] of t2.factors.entries()) {
-        if (rightUsed[j]) continue;
+        if (used[j]) continue;
         const rightInfo = this.getBaseAndExp(rightFactor);
         if (!rightInfo || !isEqual(leftInfo.base, rightInfo.base)) {
           continue;
@@ -388,30 +380,25 @@ export class Evaluator {
             totalExp,
           )
         ) {
-          rightUsed[j] = true;
+          used[j] = true;
           newFactors.push(new Power(leftFactor, new Integer(2)));
           merged = matched = true;
           break;
         }
 
-        rightUsed[j] = true;
+        used[j] = true;
         if (!isZero(totalExp)) {
-          const powered = this.simplify(new Power(leftInfo.base, totalExp));
-          if (!isOne(powered)) {
-            newFactors.push(powered);
-          }
+          newFactors.push(this.simplify(new Power(leftInfo.base, totalExp)));
         }
         merged = matched = true;
         break;
       }
 
-      if (!matched) {
-        newFactors.push(leftFactor);
-      }
+      if (!matched) newFactors.push(leftFactor);
     }
 
     for (const [j, rightFactor] of t2.factors.entries()) {
-      if (!rightUsed[j]) {
+      if (!used[j]) {
         newFactors.push(rightFactor);
       }
     }
@@ -421,9 +408,7 @@ export class Evaluator {
     }
 
     const combinedCoeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-    return newFactors.length === 0
-      ? combinedCoeff
-      : this.withCoeff(combinedCoeff, this.multiplyAll(newFactors));
+    return this.withCoeff(combinedCoeff, this.multiplyAll(newFactors));
   }
 
   private tryDivideSymbolic(
@@ -464,22 +449,19 @@ export class Evaluator {
 
     if (num.factors.length === 0 || den.factors.length === 0) return null;
 
-    const denUsed = Array.from<boolean>({ length: den.factors.length }).fill(
+    const used = Array.from<boolean>({ length: den.factors.length }).fill(
       false,
     );
-    const newNumFactors: TreeNode[] = [];
+    const newFactors: TreeNode[] = [];
     let cancelled = false;
 
     for (const numFactor of num.factors) {
       const leftInfo = this.getBaseAndExp(numFactor);
-      if (!leftInfo) {
-        newNumFactors.push(numFactor);
-        continue;
-      }
+      if (!leftInfo) continue;
 
       let matched = false;
       for (let j = 0; j < den.factors.length; j++) {
-        if (denUsed[j]) continue;
+        if (used[j]) continue;
         const rightInfo = this.getBaseAndExp(den.factors[j]);
         if (!rightInfo || !isEqual(leftInfo.base, rightInfo.base)) {
           continue;
@@ -491,16 +473,15 @@ export class Evaluator {
           "SUBTRACT",
         );
 
-        denUsed[j] = true;
+        used[j] = true;
         if (!isZero(totalExp)) {
-          newNumFactors.push(this.simplify(new Power(leftInfo.base, totalExp)));
+          newFactors.push(this.simplify(new Power(leftInfo.base, totalExp)));
         }
-
         cancelled = matched = true;
         break;
       }
 
-      if (!matched) newNumFactors.push(numFactor);
+      if (!matched) newFactors.push(numFactor);
     }
 
     if (!cancelled && isOne(den.coeff)) return null;
@@ -508,15 +489,10 @@ export class Evaluator {
     const combinedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
     if (isZero(combinedCoeff)) return Evaluator.ZERO;
 
-    const numNode =
-      newNumFactors.length === 0
-        ? combinedCoeff
-        : this.withCoeff(combinedCoeff, this.multiplyAll(newNumFactors));
+    const numNode = this.withCoeff(combinedCoeff, this.multiplyAll(newFactors));
 
-    const remainingDen = den.factors.filter((_, idx) => !denUsed[idx]);
-    return remainingDen.length === 0
-      ? numNode
-      : this.simplify(new Divide(numNode, this.multiplyAll(remainingDen)));
+    const remainingDen = den.factors.filter((_, idx) => !used[idx]);
+    return this.simplify(new Divide(numNode, this.multiplyAll(remainingDen)));
   }
 
   private tryExponentiateSymbolic(
