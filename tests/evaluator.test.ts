@@ -652,6 +652,9 @@ describe("evaluate", () => {
       expect(simplify("2^e").print()).toBe("2^e");
       expect(simplify("2^pi").print()).toBe("2^pi");
 
+      expect(simplify("2pi^2").print()).toBe("2pi^2");
+      expect(simplify("-pi^2").print()).toBe("-pi^2");
+
       expect(simplify("pi^(1/2)").print()).toBe("pi^(1/2)");
       expect(simplify("pi^(1/2)").toString()).toBe("(pi ^ (1/2))");
       expect(simplify("pi^(2/3)").print()).toBe("pi^(2/3)");
