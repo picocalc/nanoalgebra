@@ -482,6 +482,10 @@ describe("evaluate", () => {
 
       expect(simplify("e * pi - e * pi").print()).toBe("0");
       expect(simplify("e * pi - pi * e").print()).toBe("0");
+
+      expect(simplify("(2 * (x + 1)) * (3 * x)").print()).toBe(
+        "6 * ((x + 1) * x)",
+      );
     });
 
     it("handles combination of exponentiation, addition and subtraction of constants", () => {
