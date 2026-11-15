@@ -1,5 +1,7 @@
 import { powBitLength } from "bigint.bitlength";
 
+import { gcd } from "#math/gcd";
+
 import { AlgebraError } from "./errors";
 import type {
   BinaryNode,
@@ -23,6 +25,7 @@ import {
 } from "./nodes";
 import {
   isEqual,
+  isEvenInteger,
   isNegative,
   isNumerical,
   isOne,
@@ -150,27 +153,24 @@ export class Evaluator {
       }
 
       case "POWER": {
-        const expInt = tryGetIntegerValue(right);
-        const baseInt = tryGetIntegerValue(left);
-
         if (
           left.type === "FUNCTION" &&
           left.name === "abs" &&
-          expInt !== null &&
-          expInt % 2n === 0n &&
+          isEvenInteger(right) &&
           this.isReal(left.args[0])
         ) {
           return this.simplify(new Power(left.args[0], right));
         }
 
-        if (expInt === 1n) return left;
-        if (expInt === 0n || baseInt === 1n) return Evaluator.ONE;
-        if (baseInt === 0n) {
+        if (isOne(right)) return left;
+        if (isZero(right) || isOne(left)) return Evaluator.ONE;
+        if (isZero(left)) {
           return isNumerical(right) && isNegative(right)
             ? new Undefined(simplified)
             : Evaluator.ZERO;
         }
-        if (isNumerical(left) && isNumerical(right) && expInt !== null) {
+        const expInt = tryGetIntegerValue(right);
+        if (isNumerical(left) && isNumerical(right) && expInt) {
           return this.evaluatePower(left, expInt);
         }
         return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
@@ -228,8 +228,7 @@ export class Evaluator {
     if (this.symbolDomain(node) === "positive") return true;
     if (node.type === "FUNCTION" && node.name === "abs") return true;
     if (node.type === "POWER") {
-      const expInt = tryGetIntegerValue(node.right);
-      if (expInt !== null && expInt % 2n === 0n && this.isReal(node.left)) {
+      if (isEvenInteger(node.right) && this.isReal(node.left)) {
         return true;
       }
       return this.isPositive(node.left) && this.isReal(node.right);
@@ -243,17 +242,18 @@ export class Evaluator {
     );
   }
 
-  private losesEvenRootParity(
+  private losesEvenRoot(
     base: TreeNode,
-    exp1: NumericalNode,
-    exp2: NumericalNode,
-    totalExp: NumericalNode,
+    newExp: TreeNode,
+    exp1: TreeNode,
+    exp2?: TreeNode,
   ): boolean {
     return (
       !this.options.complex &&
       !this.isPositive(base) &&
-      (this.isEvenRoot(exp1) || this.isEvenRoot(exp2)) &&
-      !this.isEvenRoot(totalExp)
+      (this.isEvenRoot(exp1) ||
+        (exp2 !== undefined && this.isEvenRoot(exp2))) &&
+      !this.isEvenRoot(newExp)
     );
   }
 
@@ -358,14 +358,24 @@ export class Evaluator {
 
         used[j] = true;
         if (
-          this.losesEvenRootParity(
+          this.losesEvenRoot(
             leftInfo.base,
+            totalExp,
             leftInfo.exp,
             rightInfo.exp,
-            totalExp,
           )
         ) {
-          newFactors.push(new Power(leftFactor, new Integer(2)));
+          const f1 = Evaluator.toFraction(leftInfo.exp);
+          const f2 = Evaluator.toFraction(rightInfo.exp);
+          const fTotal = Evaluator.toFraction(totalExp);
+          const rootDenom =
+            (f1.denominator / gcd(f1.denominator, f2.denominator)) *
+            f2.denominator;
+          const outerExp = (fTotal.numerator * rootDenom) / fTotal.denominator;
+          const rootNode = this.simplify(
+            new Power(leftInfo.base, new Fraction(1n, rootDenom)),
+          );
+          newFactors.push(new Power(rootNode, new Integer(outerExp)));
         } else if (!isZero(totalExp)) {
           newFactors.push(this.simplify(new Power(leftInfo.base, totalExp)));
         }
@@ -479,17 +489,9 @@ export class Evaluator {
     if (left.type === "POWER") {
       const innerBase = left.left;
       const innerExp = left.right;
-      const innerExpInt = tryGetIntegerValue(innerExp);
       const newExp = this.simplify(new Multiply(innerExp, right));
-      const rightFrac = isNumerical(right) ? Evaluator.toFraction(right) : null;
 
-      if (
-        isOne(newExp) &&
-        innerExpInt !== null &&
-        innerExpInt % 2n === 0n &&
-        rightFrac !== null &&
-        rightFrac.denominator % 2n === 0n
-      ) {
+      if (isOne(newExp) && isEvenInteger(innerExp) && this.isEvenRoot(right)) {
         if (this.isPositive(innerBase)) return innerBase;
         return this.options.complex
           ? null
@@ -497,13 +499,8 @@ export class Evaluator {
       }
 
       if (
-        (this.options.complex &&
-          !this.isPositive(innerBase) &&
-          expInt === null) ||
-        (!this.options.complex &&
-          !this.isPositive(innerBase) &&
-          this.isEvenRoot(innerExp) &&
-          !this.isEvenRoot(newExp))
+        (this.options.complex && !this.isPositive(innerBase) && !expInt) ||
+        this.losesEvenRoot(innerBase, newExp, innerExp)
       ) {
         return null;
       }
@@ -511,7 +508,7 @@ export class Evaluator {
       return this.simplify(new Power(innerBase, newExp));
     }
 
-    if (left.type === "MULTIPLY" && expInt !== null && expInt !== 0n) {
+    if (left.type === "MULTIPLY" && expInt) {
       const { coeff, factors } = this.extractFactors(left);
       const single = this.singleFactor(factors);
       if (!isOne(coeff) && single) {

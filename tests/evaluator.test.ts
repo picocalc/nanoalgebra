@@ -683,6 +683,7 @@ describe("evaluate", () => {
       expect(simplify("sqrt(2)^2").print()).toBe("2");
       expect(simplify("sqrt(-1) * sqrt(-1)").print()).toBe("((-1)^(1/2))^2");
       expect(simplify("sqrt(-1)^4").print()).toBe("((-1)^(1/2))^4");
+      expect(simplify("sqrt(x) * sqrt(x)^3").print()).toBe("(x^(1/2))^4");
     });
 
     it("handles abs function", () => {

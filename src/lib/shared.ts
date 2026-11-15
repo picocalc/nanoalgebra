@@ -49,10 +49,12 @@ export function isNumerical(node: TreeNode): node is NumericalNode {
 
 export function tryGetIntegerValue(node: TreeNode): bigint | null {
   if (node.type === "INTEGER") return node.value;
-  if (node.type === "DECIMAL" && node.exponent >= 0n) {
-    return node.whole * 10n ** node.exponent;
-  }
   return null;
+}
+
+export function isEvenInteger(node: TreeNode): boolean {
+  const int = tryGetIntegerValue(node);
+  return !(!int || int % 2n);
 }
 
 export function isEqual(left: TreeNode, right: TreeNode): boolean {
