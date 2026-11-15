@@ -440,14 +440,14 @@ export class Evaluator {
       );
     }
 
-    if (num.factors.length > 0 && den.factors.length === 0) {
+    if (num.factors.length === 0) return null;
+
+    if (den.factors.length === 0) {
       return this.buildTerm(
         this.evaluateNumericDivide(num.coeff, den.coeff),
         num.factors,
       );
     }
-
-    if (num.factors.length === 0 || den.factors.length === 0) return null;
 
     const used = Array.from<boolean>({ length: den.factors.length }).fill(
       false,
