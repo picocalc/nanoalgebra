@@ -1,17 +1,19 @@
 import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 
-import type { DefinedNode } from "./nodes";
+import type { TreeNode } from "./nodes";
 import {
   Add,
   Decimal,
   Divide,
+  FunctionCall,
   Integer,
   Modulo,
   Multiply,
   Power,
   Subtract,
   SymbolNode,
+  Undefined,
 } from "./nodes";
 import { negate } from "./shared";
 
@@ -21,10 +23,19 @@ export class ParserError extends AlgebraError {
   }
 }
 
+export interface ParserOptions {
+  functions?: ReadonlySet<string>;
+}
+
+export const functions: ReadonlySet<string> = new Set(["abs", "sqrt"]);
+
 export class Parser {
   private current: number = 0;
 
-  constructor(readonly tokens: Token[]) {}
+  constructor(
+    readonly tokens: Token[],
+    readonly options: Readonly<ParserOptions> = { functions },
+  ) {}
 
   private peek(): Token | undefined {
     return this.tokens[this.current];
@@ -35,7 +46,7 @@ export class Parser {
     return token;
   }
 
-  public parse(): DefinedNode {
+  public parse(): TreeNode {
     if (this.tokens.length === 0) {
       throw new ParserError("Empty expression", 0);
     }
@@ -47,7 +58,46 @@ export class Parser {
     return node;
   }
 
-  private parseFactor(): DefinedNode {
+  private parseFunctionCall(name: string, pos: number): FunctionCall {
+    const openParen = this.peek();
+    if (openParen?.type !== "LPAREN") {
+      throw new ParserError(
+        `Expected '(' after function '${name}'`,
+        openParen?.pos ?? this.tokens.at(-1)?.pos ?? pos,
+      );
+    }
+    this.consume(openParen);
+
+    const firstToken = this.peek();
+    if (firstToken?.type === "RPAREN") {
+      throw new ParserError(
+        `Expected at least one argument for function '${name}'`,
+        firstToken.pos,
+      );
+    }
+
+    const args: [TreeNode, ...TreeNode[]] = [this.parseExpression()];
+
+    let token;
+    while ((token = this.peek())) {
+      if (token.type !== "COMMA") break;
+      this.consume(token);
+      args.push(this.parseExpression());
+    }
+
+    const closeParen = this.peek();
+    if (closeParen?.type !== "RPAREN") {
+      throw new ParserError(
+        "Expected closing parenthesis",
+        closeParen?.pos ?? this.tokens.at(-1)?.pos ?? 0,
+      );
+    }
+    this.consume(closeParen);
+
+    return new FunctionCall(name, args);
+  }
+
+  private parseFactor(): TreeNode {
     const token = this.peek();
 
     if (!token) {
@@ -78,6 +128,15 @@ export class Parser {
 
     if (token.type === "IDENTIFIER") {
       this.consume(token);
+
+      if (token.id === "undefined") {
+        return new Undefined(new SymbolNode(token.id));
+      }
+
+      if (this.options.functions?.has(token.id)) {
+        return this.parseFunctionCall(token.id, token.pos);
+      }
+
       return new SymbolNode(token.id);
     }
 
@@ -98,7 +157,7 @@ export class Parser {
     throw new ParserError(`Unexpected token type '${token.type}'`, token.pos);
   }
 
-  private parseExponent(): DefinedNode {
+  private parseExponent(): TreeNode {
     let left = this.parseFactor();
 
     const token = this.peek();
@@ -111,7 +170,7 @@ export class Parser {
     return left;
   }
 
-  private parseImplicitMul(prev?: Token): DefinedNode {
+  private parseImplicitMul(prev?: Token): TreeNode {
     let left = this.parseExponent();
 
     let token;
@@ -134,7 +193,7 @@ export class Parser {
     return left;
   }
 
-  private parseUnary(): DefinedNode {
+  private parseUnary(): TreeNode {
     const token = this.peek();
 
     if (token?.type === "PLUS") {
@@ -150,7 +209,7 @@ export class Parser {
     return this.parseImplicitMul(token);
   }
 
-  private parseTerm(): DefinedNode {
+  private parseTerm(): TreeNode {
     let left = this.parseUnary();
 
     let token;
@@ -175,7 +234,7 @@ export class Parser {
     return left;
   }
 
-  private parseExpression(): DefinedNode {
+  private parseExpression(): TreeNode {
     let left = this.parseTerm();
 
     let token;

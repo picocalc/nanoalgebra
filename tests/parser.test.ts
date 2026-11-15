@@ -23,6 +23,22 @@ describe("parse", () => {
     });
   });
 
+  it("handles constants and functions", () => {
+    expect(parse("pi")).toMatchObject({ type: "SYMBOL", name: "pi" });
+    expect(parse("sqrt(4)")).toMatchObject({
+      type: "FUNCTION",
+      name: "sqrt",
+      args: [{ type: "INTEGER", value: 4n }],
+    });
+  });
+
+  it("handles undefined", () => {
+    expect(parse("undefined")).toMatchObject({
+      type: "UNDEFINED",
+      node: { type: "SYMBOL", name: "undefined" },
+    });
+  });
+
   describe("invalid expressions", () => {
     it("handles an empty expression", () => {
       expect(() => parse("")).toThrow(ParserError);
@@ -38,6 +54,13 @@ describe("parse", () => {
       expect(() => parse("1)")).toThrow(ParserError);
       expect(() => parse("2 3")).toThrow(ParserError);
       expect(() => parse("pi 2")).toThrow(ParserError);
+      expect(() => parse(",")).toThrow(ParserError);
+    });
+
+    it("handles incorrect functions", () => {
+      expect(() => parse("sqrt()")).toThrow(ParserError);
+      expect(() => parse("sqrt(4")).toThrow(ParserError);
+      expect(() => parse("sqrt 4")).toThrow(ParserError);
     });
   });
 });

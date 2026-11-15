@@ -1,19 +1,22 @@
 import { gcd } from "#math/gcd";
 
 import { EvaluatorError } from "./evaluator";
-import { isNegative } from "./shared";
+import { isNegative, isNumerical } from "./shared";
 
-type DefinedNodeType =
-  | "INTEGER"
-  | "DECIMAL"
-  | "FRACTION"
-  | "SYMBOL"
+export type BinaryOpType =
   | "ADD"
   | "SUBTRACT"
   | "MULTIPLY"
   | "DIVIDE"
   | "MOD"
   | "POWER";
+type DefinedNodeType =
+  | "INTEGER"
+  | "DECIMAL"
+  | "FRACTION"
+  | "SYMBOL"
+  | "FUNCTION"
+  | BinaryOpType;
 
 type NodeType = DefinedNodeType | "UNDEFINED";
 
@@ -21,6 +24,7 @@ const PRECEDENCE = {
   INTEGER: 4,
   DECIMAL: 4,
   SYMBOL: 4,
+  FUNCTION: 4,
   POWER: 3,
   MULTIPLY: 2,
   FRACTION: 2,
@@ -67,7 +71,7 @@ export class Undefined extends BaseNode<"UNDEFINED"> {
     return this.node.print();
   }
   toString(): string {
-    return "UNDEFINED";
+    return "undefined";
   }
 }
 
@@ -214,7 +218,12 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
         return `${left.print()}${right.print()}`;
       }
       if (left.type === "FRACTION") {
-        const coeff = left.numerator === 1n ? "" : `${left.numerator}`;
+        const coeff =
+          left.numerator === 1n
+            ? ""
+            : left.numerator === -1n
+              ? "-"
+              : `${left.numerator}`;
         return `${coeff}${right.print()}/${left.denominator}`;
       }
     }
@@ -286,19 +295,27 @@ export class SymbolNode extends BaseNode<"SYMBOL"> {
   }
 }
 
-export function isNumerical(node: TreeNode): node is NumericalNode {
-  return (
-    node.type === "INTEGER" ||
-    node.type === "DECIMAL" ||
-    node.type === "FRACTION"
-  );
+export class FunctionCall extends BaseNode<"FUNCTION"> {
+  constructor(
+    readonly name: string,
+    readonly args: readonly [TreeNode, ...TreeNode[]],
+  ) {
+    super("FUNCTION");
+  }
+
+  print(): string {
+    return `${this.name}(${this.args.map((n) => n.print()).join(", ")})`;
+  }
+  toString(): string {
+    return `${this.name}(${this.args.map((n) => n.toString()).join(", ")})`;
+  }
 }
 
 export type NumericalNode = Integer | Decimal | Fraction;
 
 export type BinaryNode = Add | Subtract | Multiply | Divide | Modulo | Power;
 
-export type SymbolicNode = SymbolNode | BinaryNode;
+export type SymbolicNode = SymbolNode | FunctionCall | BinaryNode;
 
 export type DefinedNode = NumericalNode | SymbolicNode;
 
