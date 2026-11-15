@@ -218,7 +218,12 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
         return `${left.print()}${right.print()}`;
       }
       if (left.type === "FRACTION") {
-        const coeff = left.numerator === 1n ? "" : `${left.numerator}`;
+        const coeff =
+          left.numerator === 1n
+            ? ""
+            : left.numerator === -1n
+              ? "-"
+              : `${left.numerator}`;
         return `${coeff}${right.print()}/${left.denominator}`;
       }
     }

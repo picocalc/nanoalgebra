@@ -1,3 +1,5 @@
+import { powBitLength } from "bigint.bitlength";
+
 import type { NumericalNode, TreeNode } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
 
@@ -82,4 +84,10 @@ export function isEqual(left: TreeNode, right: TreeNode): boolean {
   return false;
 }
 
-export const POW_BITS_THRESHOLD = 50_000n;
+export const POW_BITS_THRESHOLD = 40_000n;
+
+export function isAbovePowThreshold(base: bigint, exp: bigint): boolean {
+  if (base === -1n || base === 0n || base === 1n) return false;
+  if (exp > POW_BITS_THRESHOLD || -exp < -POW_BITS_THRESHOLD) return true;
+  return powBitLength(base, exp) > POW_BITS_THRESHOLD;
+}

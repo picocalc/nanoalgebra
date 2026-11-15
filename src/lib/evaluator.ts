@@ -1,5 +1,3 @@
-import { powBitLength } from "bigint.bitlength";
-
 import { lcm } from "#math/lcm";
 
 import { AlgebraError } from "./errors";
@@ -24,6 +22,7 @@ import {
   Undefined,
 } from "./nodes";
 import {
+  isAbovePowThreshold,
   isEqual,
   isEvenInteger,
   isNegative,
@@ -31,7 +30,6 @@ import {
   isOne,
   isZero,
   negate,
-  POW_BITS_THRESHOLD,
   tryGetIntegerValue,
 } from "./shared";
 
@@ -635,20 +633,18 @@ export class Evaluator {
   ): NumericalNode | Power {
     if (exp > 0n) {
       if (base.type === "INTEGER") {
-        return powBitLength(base.value, exp) > POW_BITS_THRESHOLD
+        return isAbovePowThreshold(base.value, exp)
           ? new Power(base, new Integer(exp))
           : new Integer(base.value ** exp);
       }
       if (base.type === "DECIMAL") {
-        const scaledExp = base.exponent * exp;
-        if (
-          powBitLength(base.whole, exp) > POW_BITS_THRESHOLD ||
-          scaledExp > POW_BITS_THRESHOLD ||
-          scaledExp < -POW_BITS_THRESHOLD
-        ) {
+        if (isAbovePowThreshold(base.whole, exp)) {
           return new Power(base, new Integer(exp));
         }
-        return Evaluator.normalizeDecimal(base.whole ** exp, scaledExp);
+        return Evaluator.normalizeDecimal(
+          base.whole ** exp,
+          base.exponent * exp,
+        );
       }
     }
 
@@ -658,8 +654,7 @@ export class Evaluator {
         ? [f.numerator, f.denominator, exp]
         : [f.denominator, f.numerator, -exp];
 
-    return powBitLength(num, e) > POW_BITS_THRESHOLD ||
-      powBitLength(den, e) > POW_BITS_THRESHOLD
+    return isAbovePowThreshold(num, e) || isAbovePowThreshold(den, e)
       ? new Power(base, new Integer(exp))
       : this.normalizeFraction(num ** e, den ** e);
   }

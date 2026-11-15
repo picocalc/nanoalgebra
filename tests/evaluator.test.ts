@@ -545,6 +545,7 @@ describe("evaluate", () => {
 
     it("handles combination of division and multiplication of constants", () => {
       expect(simplify("1/2 * pi").print()).toBe("pi/2");
+      expect(simplify("-1/2 * pi").print()).toBe("-pi/2");
       expect(simplify("2/3 * pi").print()).toBe("2pi/3");
       expect(simplify("pi / 2 * pi").print()).toBe("pi^2/2");
       expect(simplify("pi(1/pi)").print()).toBe("1");
