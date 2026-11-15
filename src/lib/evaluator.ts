@@ -22,6 +22,7 @@ import {
   Undefined,
 } from "./nodes";
 import {
+  isEqual,
   isNegative,
   isNumerical,
   isOne,
@@ -294,11 +295,7 @@ export class Evaluator {
     if (node.type === "MULTIPLY") {
       const left = this.extractFactors(node.left);
       const right = this.extractFactors(node.right);
-      const coeff = isOne(left.coeff)
-        ? right.coeff
-        : isOne(right.coeff)
-          ? left.coeff
-          : this.evaluateNumericMultiply(left.coeff, right.coeff);
+      const coeff = isOne(left.coeff) ? right.coeff : left.coeff;
       return { coeff, factors: [...left.factors, ...right.factors] };
     }
     return { coeff: Evaluator.ONE, factors: [node] };
@@ -313,9 +310,11 @@ export class Evaluator {
     f2: readonly TreeNode[],
   ): boolean {
     if (f1.length !== f2.length) return false;
-    const s1 = f1.map((f) => f.print()).sort();
-    const s2 = f2.map((f) => f.print()).sort();
-    return s1.every((val, i) => val === s2[i]);
+    // oxlint-disable-next-line typescript/require-array-sort-compare
+    const s1 = f1.map((x) => x).sort();
+    // oxlint-disable-next-line typescript/require-array-sort-compare
+    const s2 = f2.map((x) => x).sort();
+    return s1.every((val, i) => s2[i] && isEqual(val, s2[i]));
   }
 
   private getBaseAndExp(
@@ -371,7 +370,7 @@ export class Evaluator {
       for (const [j, rightFactor] of t2.factors.entries()) {
         if (rightUsed[j]) continue;
         const rightInfo = this.getBaseAndExp(rightFactor);
-        if (!rightInfo || leftInfo.base.print() !== rightInfo.base.print()) {
+        if (!rightInfo || !isEqual(leftInfo.base, rightInfo.base)) {
           continue;
         }
 
@@ -440,9 +439,8 @@ export class Evaluator {
     const num = this.extractFactors(left);
     const den = this.extractFactors(right);
 
-    const singleDen = this.singleFactor(den.factors);
-    if (num.factors.length === 0 && singleDen) {
-      const rightInfo = this.getBaseAndExp(singleDen);
+    if (num.factors.length === 0) {
+      const rightInfo = this.getBaseAndExp(this.singleFactor(den.factors));
       if (!rightInfo) return null;
 
       const totalExp = this.evaluateNumericBinary(
@@ -483,7 +481,7 @@ export class Evaluator {
       for (let j = 0; j < den.factors.length; j++) {
         if (denUsed[j]) continue;
         const rightInfo = this.getBaseAndExp(den.factors[j]);
-        if (!rightInfo || leftInfo.base.print() !== rightInfo.base.print()) {
+        if (!rightInfo || !isEqual(leftInfo.base, rightInfo.base)) {
           continue;
         }
 

@@ -55,4 +55,23 @@ export function tryGetIntegerValue(node: TreeNode): bigint | null {
   return null;
 }
 
+export function isEqual(left: TreeNode, right: TreeNode): boolean {
+  if (left.type === "INTEGER" && right.type === "INTEGER") {
+    return left.value === right.value;
+  }
+  if (left.type === "SYMBOL" && right.type === "SYMBOL") {
+    return left.name === right.name;
+  }
+  if (left.type === "POWER" && right.type === "POWER") {
+    return isEqual(left.left, right.left) && isEqual(left.right, right.right);
+  }
+  if (left.type === "FUNCTION" && right.type === "FUNCTION") {
+    return (
+      left.name === right.name &&
+      left.args.every((val, i) => right.args[i] && isEqual(val, right.args[i]))
+    );
+  }
+  return false;
+}
+
 export const POW_BITS_THRESHOLD = 50_000n;
