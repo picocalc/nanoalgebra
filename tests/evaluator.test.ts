@@ -516,6 +516,8 @@ describe("evaluate", () => {
       expect(simplify("2pi * 3").print()).toBe("6pi");
       expect(simplify("2 * 3pi").print()).toBe("6pi");
 
+      expect(simplify("2e * 3pi").print()).toBe("6 * (e * pi)");
+
       expect(simplify("e * pi * e").print()).toBe("e^2 * pi");
       expect(simplify("e * (e * pi)").print()).toBe("e^2 * pi");
       expect(simplify("e * (pi * e)").print()).toBe("e^2 * pi");
@@ -668,6 +670,14 @@ describe("evaluate", () => {
       expect(simplify("(pi^2)^3").print()).toBe("pi^6");
 
       expect(simplify("(pi^4)^(1/2)").print()).toBe("pi^2");
+    });
+  });
+
+  describe("variables", () => {
+    it("handles fractional exponents", () => {
+      expect(simplify("(x^2)^(1/2)").print()).toBe("abs(x)");
+      expect(simplify("(x^3)^(1/3)").print()).toBe("x");
+      expect(simplify("(x^4)^(1/4)").print()).toBe("abs(x)");
     });
   });
 
