@@ -27,7 +27,12 @@ export interface ParserOptions {
   functions?: ReadonlySet<string>;
 }
 
-export const functions: ReadonlySet<string> = new Set(["abs", "sqrt"]);
+export const functions: ReadonlySet<string> = new Set([
+  "abs",
+  "ceil",
+  "floor",
+  "sqrt",
+]);
 
 export class Parser {
   private current: number = 0;
