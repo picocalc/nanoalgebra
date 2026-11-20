@@ -752,6 +752,7 @@ describe("evaluate", () => {
       expect(simplify("abs(pi) * abs(pi)").print()).toBe("pi^2");
 
       expect(simplify("abs(x)").print()).toBe("abs(x)");
+      expect(simplify("abs(-x)").print()).toBe("abs(x)");
       expect(simplify("abs(x^2)").print()).toBe("x^2");
       expect(simplify("abs(2^x)").print()).toBe("2^x");
       expect(simplify("abs(e^x)").print()).toBe("e^x");
