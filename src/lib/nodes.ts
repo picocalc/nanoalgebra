@@ -1,7 +1,7 @@
 import { gcd } from "#math/gcd";
 
 import { EvaluatorError } from "./evaluator";
-import { isNegative, isNumerical } from "./shared";
+import { isNegativeNumber, isNumerical } from "./shared";
 
 export type BinaryOpType =
   | "ADD"
@@ -43,12 +43,24 @@ function isRightAssociative(node: BinaryNode) {
   return node.type === "POWER";
 }
 
+function startsWithNegSign(node: TreeNode): boolean {
+  if (node.type === "UNDEFINED") return startsWithNegSign(node.node);
+  if (isNegativeNumber(node)) return true;
+  if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+    return startsWithNegSign(node.left);
+  }
+  return false;
+}
+
 function printSelf(self: BinaryNode, operator: string): string {
   const { left, right } = self;
   const p = PRECEDENCE[self.type];
 
   const [needParenthesesLeft, needParenthesesRight] = isRightAssociative(self)
-    ? [isNegative(left) || getPrecedence(left) <= p, getPrecedence(right) < p]
+    ? [
+        startsWithNegSign(left) || getPrecedence(left) <= p,
+        getPrecedence(right) < p,
+      ]
     : [getPrecedence(left) < p, getPrecedence(right) <= p];
 
   const l = needParenthesesLeft ? `(${left.print()})` : left.print();
@@ -88,7 +100,7 @@ export class Integer extends BaseNode<"INTEGER"> {
   }
   toString(): string {
     const s = this.print();
-    return isNegative(this) ? `(${s})` : s;
+    return startsWithNegSign(this) ? `(${s})` : s;
   }
 }
 
@@ -113,7 +125,7 @@ export class Decimal extends BaseNode<"DECIMAL"> {
   }
   toString(): string {
     const s = this.print();
-    return isNegative(this) ? `(${s})` : s;
+    return startsWithNegSign(this) ? `(${s})` : s;
   }
 }
 
@@ -193,7 +205,7 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
       right.type !== "INTEGER" &&
       right.type !== "DECIMAL" &&
       right.type !== "UNDEFINED" &&
-      !isNegative(right)
+      !startsWithNegSign(right)
     ) {
       const needsParens =
         right.type === "ADD" ||

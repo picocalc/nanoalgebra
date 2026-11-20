@@ -25,7 +25,7 @@ import {
   isAbovePowThreshold,
   isEqual,
   isEvenInteger,
-  isNegative,
+  isNegativeNumber,
   isNumerical,
   isOne,
   isZero,
@@ -162,15 +162,14 @@ export class Evaluator {
         if (isOne(right)) return left;
         if (isZero(right) || isOne(left)) return Evaluator.ONE;
         if (isZero(left)) {
-          return isNumerical(right) && isNegative(right)
+          return isNegativeNumber(right)
             ? new Undefined(simplified)
             : Evaluator.ZERO;
         }
         if (
           !this.options.complex &&
           this.isEvenRoot(right) &&
-          ((isNumerical(left) && isNegative(left)) ||
-            this.symbolDomain(left) === "negative")
+          (isNegativeNumber(left) || this.symbolDomain(left) === "negative")
         ) {
           return new Undefined(simplified);
         }
@@ -205,8 +204,9 @@ export class Evaluator {
   }
 
   private evaluateAbs(node: TreeNode): TreeNode {
-    if (isNumerical(node)) return isNegative(node) ? negate(node) : node;
+    if (isNumerical(node)) return isNegativeNumber(node) ? negate(node) : node;
     if (this.isPositive(node)) return node;
+    if (this.isNegative(node)) return this.simplify(negate(node));
     if (node.type === "MULTIPLY") {
       const { coeff, body } = this.extractFactors(node);
       if (!isOne(coeff)) {
@@ -258,7 +258,7 @@ export class Evaluator {
   private appendTerms(initial: TreeNode, terms: readonly Term[]): TreeNode {
     let acc = initial;
     for (const term of terms) {
-      if (isNegative(term.coeff)) {
+      if (isNegativeNumber(term.coeff)) {
         acc = new Subtract(acc, this.withCoeff(negate(term.coeff), term.body));
       } else {
         acc = new Add(acc, this.withCoeff(term.coeff, term.body));
@@ -291,7 +291,7 @@ export class Evaluator {
   }
 
   private isPositive(node: TreeNode): boolean {
-    if (isNumerical(node)) return !isNegative(node);
+    if (isNumerical(node)) return !isNegativeNumber(node);
     if (this.symbolDomain(node) === "positive") return true;
     if (node.type === "FUNCTION" && node.name === "abs") return true;
     if (node.type === "POWER") {
@@ -299,6 +299,28 @@ export class Evaluator {
         return true;
       }
       return this.isPositive(node.left) && this.isReal(node.right);
+    }
+    if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+      return (
+        (this.isPositive(node.left) && this.isPositive(node.right)) ||
+        (this.isNegative(node.left) && this.isNegative(node.right))
+      );
+    }
+    return false;
+  }
+
+  private isNegative(node: TreeNode): boolean {
+    if (isNegativeNumber(node)) return true;
+    if (this.symbolDomain(node) === "negative") return true;
+    if (node.type === "POWER") {
+      const exp = tryGetIntegerValue(node.right);
+      return exp !== null && exp % 2n !== 0n && this.isNegative(node.left);
+    }
+    if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+      return (
+        (this.isPositive(node.left) && this.isNegative(node.right)) ||
+        (this.isNegative(node.left) && this.isPositive(node.right))
+      );
     }
     return false;
   }

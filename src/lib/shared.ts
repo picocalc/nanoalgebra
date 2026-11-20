@@ -13,7 +13,7 @@ export function negate(node: TreeNode): TreeNode {
     return new Fraction(-node.numerator, node.denominator);
   if (
     node.type === "MULTIPLY" &&
-    isNegative(node.left) &&
+    isNegativeNumber(node.left) &&
     node.left.type !== "UNDEFINED"
   ) {
     return new Multiply(negate(node.left), node.right);
@@ -21,14 +21,10 @@ export function negate(node: TreeNode): TreeNode {
   return new Multiply(new Integer(-1), node);
 }
 
-export function isNegative(node: TreeNode): boolean {
-  if (node.type === "UNDEFINED") return isNegative(node.node);
+export function isNegativeNumber(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value < 0n;
   if (node.type === "DECIMAL") return node.whole < 0n;
   if (node.type === "FRACTION") return node.numerator < 0n;
-  if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
-    return isNegative(node.left);
-  }
   return false;
 }
 

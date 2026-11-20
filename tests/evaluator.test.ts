@@ -744,6 +744,7 @@ describe("evaluate", () => {
       expect(simplify("abs(-1/2)").print()).toBe("1/2");
 
       expect(simplify("abs(pi)").print()).toBe("pi");
+      expect(simplify("abs(-pi)").print()).toBe("pi");
       expect(simplify("abs(pi^2)").print()).toBe("pi^2");
       expect(simplify("abs(pi)^2").print()).toBe("pi^2");
       expect(simplify("abs(e^pi)").print()).toBe("e^pi");
@@ -766,6 +767,13 @@ describe("evaluate", () => {
       expect(simplify("abs(2x)").print()).toBe("2abs(x)");
       expect(simplify("x^2 / abs(x)").print()).toBe("abs(x)");
       expect(simplify("x^3 / abs(x)").print()).toBe("x * abs(x)");
+
+      const negativeXoptions = {
+        functions,
+        constants: new Map([["x", "negative" as const]]),
+      };
+      expect(simplify("abs(x)", negativeXoptions).print()).toBe("-x");
+      expect(simplify("abs(-x)", negativeXoptions).print()).toBe("-x");
     });
 
     it("handles floor and functions", () => {
