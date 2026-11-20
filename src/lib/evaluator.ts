@@ -237,9 +237,11 @@ export class Evaluator {
 
       if (intTerms.length > 0) {
         if (nonIntTerms.length === 0) return node;
-        return this.appendTerms(
-          new FunctionCall(op, [this.buildSum(nonIntTerms)]),
-          intTerms,
+        return this.simplify(
+          this.appendTerms(
+            new FunctionCall(op, [this.buildSum(nonIntTerms)]),
+            intTerms,
+          ),
         );
       }
     }

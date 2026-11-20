@@ -799,6 +799,9 @@ describe("evaluate", () => {
       expect(simplify("floor(x + 1)").print()).toBe("floor(x) + 1");
       expect(simplify("ceil(x + 1)").print()).toBe("ceil(x) + 1");
 
+      expect(simplify("floor(x + floor(x))").print()).toBe("2floor(x)");
+      expect(simplify("ceil(x + ceil(x))").print()).toBe("2ceil(x)");
+
       expect(simplify("floor(x + ceil(x))").print()).toBe("floor(x) + ceil(x)");
       expect(simplify("ceil(x + floor(x))").print()).toBe("ceil(x) + floor(x)");
     });
