@@ -447,16 +447,6 @@ describe("evaluate", () => {
       expect(simplify("e - 0").print()).toBe("e");
       expect(simplify("0 - e").print()).toBe("-e");
 
-      expect(simplify("pi - pi + e").print()).toBe("e");
-      expect(simplify("e - e + pi").print()).toBe("pi");
-
-      expect(simplify("e + (pi - pi)").print()).toBe("e");
-      expect(simplify("pi + (e - e)").print()).toBe("pi");
-
-      expect(simplify("e + pi - pi").print()).toBe("e");
-      expect(simplify("e - pi + pi").print()).toBe("e");
-      expect(simplify("(e - pi) - (e - pi)").print()).toBe("0");
-
       expect(simplify("pi + e").print()).toBe("pi + e");
       expect(simplify("e + pi").print()).toBe("e + pi");
       expect(simplify("pi - e").print()).toBe("pi - e");
@@ -470,8 +460,22 @@ describe("evaluate", () => {
       expect(simplify("2 - e").print()).toBe("2 - e");
       expect(simplify("2 - pi").print()).toBe("2 - pi");
 
+      expect(simplify("pi - pi + e").print()).toBe("e");
+      expect(simplify("e - e + pi").print()).toBe("pi");
+
+      expect(simplify("e + (pi - pi)").print()).toBe("e");
+      expect(simplify("pi + (e - e)").print()).toBe("pi");
+
+      expect(simplify("e + pi - pi").print()).toBe("e");
+      expect(simplify("e - pi + pi").print()).toBe("e");
+      expect(simplify("(e - pi) - (e - pi)").print()).toBe("0");
+
       expect(simplify("e + pi + e").print()).toBe("2e + pi");
       expect(simplify("e - pi + e").print()).toBe("2e - pi");
+
+      expect(simplify("2 + pi + 3").print()).toBe("5 + pi");
+      expect(simplify("1/2 + pi + 0.5").print()).toBe("1 + pi");
+      expect(simplify("2 + pi - 3").print()).toBe("-1 + pi");
 
       expect(simplify("0pi + e").print()).toBe("e");
       expect(simplify("0e + pi").print()).toBe("pi");
