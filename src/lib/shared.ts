@@ -59,6 +59,29 @@ export function isEvenInteger(node: TreeNode): boolean {
   return !(!int || int % 2n);
 }
 
+export function isInteger(node: TreeNode): boolean {
+  if (tryGetIntegerValue(node) !== null) return true;
+  if (
+    node.type === "FUNCTION" &&
+    (node.name === "floor" || node.name === "ceil") &&
+    node.args.length === 1
+  ) {
+    return true;
+  }
+  if (
+    node.type === "ADD" ||
+    node.type === "SUBTRACT" ||
+    node.type === "MULTIPLY"
+  ) {
+    return isInteger(node.left) && isInteger(node.right);
+  }
+  if (node.type === "POWER") {
+    const exp = tryGetIntegerValue(node.right);
+    return !!exp && isInteger(node.left);
+  }
+  return false;
+}
+
 export function isEqual(left: TreeNode, right: TreeNode): boolean {
   if (left.type === "INTEGER" && right.type === "INTEGER") {
     return left.value === right.value;

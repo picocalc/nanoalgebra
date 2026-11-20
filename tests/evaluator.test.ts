@@ -750,16 +750,27 @@ describe("evaluate", () => {
       expect(simplify("x^3 / abs(x)").print()).toBe("x * abs(x)");
     });
 
-    it("handles floor function", () => {
+    it("handles floor and functions", () => {
       expect(simplify("floor(1)").print()).toBe("1");
-      expect(simplify("floor(1.5)").print()).toBe("1");
-      expect(simplify("floor(-1.5)").print()).toBe("-2");
-    });
-
-    it("should handle ceil function", () => {
       expect(simplify("ceil(1)").print()).toBe("1");
+
+      expect(simplify("floor(1.5)").print()).toBe("1");
       expect(simplify("ceil(1.5)").print()).toBe("2");
+
+      expect(simplify("floor(-1.5)").print()).toBe("-2");
       expect(simplify("ceil(-1.5)").print()).toBe("-1");
+
+      expect(simplify("floor(3/2)").print()).toBe("1");
+      expect(simplify("ceil(3/2)").print()).toBe("2");
+
+      expect(simplify("floor(-3/2)").print()).toBe("-2");
+      expect(simplify("ceil(-3/2)").print()).toBe("-1");
+
+      expect(simplify("floor(floor(x))").print()).toBe("floor(x)");
+      expect(simplify("ceil(ceil(x))").print()).toBe("ceil(x)");
+
+      expect(simplify("ceil(floor(x))").print()).toBe("floor(x)");
+      expect(simplify("floor(ceil(x))").print()).toBe("ceil(x)");
     });
 
     it("handles functions", () => {

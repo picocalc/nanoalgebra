@@ -29,6 +29,7 @@ import {
   isNumerical,
   isOne,
   isZero,
+  isInteger,
   negate,
   tryGetIntegerValue,
 } from "./shared";
@@ -88,9 +89,7 @@ export class Evaluator {
           return this.simplify(new Power(args[0], new Fraction(1n, 2n)));
         }
         if (name === "floor" || name === "ceil") {
-          return isNumerical(args[0])
-            ? this.evaluateFloorCeil(args[0], name)
-            : simplified;
+          return this.evaluateFloorCeil(args[0], name);
         }
         return simplified;
       }
@@ -219,7 +218,17 @@ export class Evaluator {
     return new FunctionCall("abs", [node]);
   }
 
-  private evaluateFloorCeil(
+  private evaluateFloorCeil(node: TreeNode, op: "floor" | "ceil"): TreeNode {
+    if (isNumerical(node)) {
+      return this.evaluateNumericFloorCeil(node, op);
+    }
+    if (isInteger(node)) {
+      return node;
+    }
+    return new FunctionCall(op, [node]);
+  }
+
+  private evaluateNumericFloorCeil(
     node: NumericalNode,
     op: "floor" | "ceil",
   ): Integer {
