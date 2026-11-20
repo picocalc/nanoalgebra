@@ -520,6 +520,8 @@ describe("evaluate", () => {
       expect(simplify("(2 * (x + 1)) * (3 * x)").print()).toBe(
         "6 * ((x + 1) * x)",
       );
+
+      expect(simplify("-(-pi - 1)").print()).toBe("pi + 1");
     });
 
     it("handles combination of exponentiation, addition and subtraction of constants", () => {
@@ -669,6 +671,8 @@ describe("evaluate", () => {
       expect(simplify("e^2 / pi").print()).toBe("e^2 / pi");
       expect(simplify("e * (e / pi)").print()).toBe("e^2 / pi");
       expect(simplify("pi(2pi / pi^2)").print()).toBe("2");
+
+      expect(simplify("(-pi - 1) / -1").print()).toBe("pi + 1");
     });
 
     it("handles exponentiation of constants", () => {

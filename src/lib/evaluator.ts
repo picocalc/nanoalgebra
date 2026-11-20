@@ -32,6 +32,7 @@ import {
   isInteger,
   negate,
   tryGetIntegerValue,
+  isNegativeOne,
 } from "./shared";
 
 export class EvaluatorError extends AlgebraError {
@@ -537,10 +538,15 @@ export class Evaluator {
     const t2 = this.extractFactors(right);
 
     if (t1.factors.length === 0 || t2.factors.length === 0) {
-      return this.makeTerm(
-        this.evaluateNumericMultiply(t1.coeff, t2.coeff),
-        isOne(t1.body) ? t2.body : t1.body,
-      );
+      const coeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
+      const body = isOne(t1.body) ? t2.body : t1.body;
+      if (
+        isNegativeOne(coeff) &&
+        (body.type === "ADD" || body.type === "SUBTRACT")
+      ) {
+        return this.buildSum(this.extractTerms(body, true));
+      }
+      return this.makeTerm(coeff, body);
     }
 
     const { factors, changed } = this.combineFactors(t1.factors, t2.factors);
@@ -577,7 +583,7 @@ export class Evaluator {
     }
 
     if (den.factors.length === 0) {
-      return this.makeTerm(
+      return this.withCoeff(
         this.evaluateNumericDivide(num.coeff, den.coeff),
         num.body,
       );

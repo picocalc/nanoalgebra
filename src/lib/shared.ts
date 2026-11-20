@@ -43,6 +43,13 @@ export function isOne(node: TreeNode): boolean {
   return false;
 }
 
+export function isNegativeOne(node: TreeNode): boolean {
+  if (node.type === "INTEGER") return node.value === -1n;
+  if (node.type === "DECIMAL")
+    return node.whole === -1n && node.exponent === 0n;
+  return false;
+}
+
 export function isNumerical(node: TreeNode): node is NumericalNode {
   return (
     node.type === "INTEGER" ||
