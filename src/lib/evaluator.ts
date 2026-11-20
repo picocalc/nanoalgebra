@@ -87,6 +87,11 @@ export class Evaluator {
         if (name === "sqrt") {
           return this.simplify(new Power(args[0], new Fraction(1n, 2n)));
         }
+        if (name === "floor" || name === "ceil") {
+          return isNumerical(args[0])
+            ? this.evaluateFloorCeil(args[0], name)
+            : simplified;
+        }
         return simplified;
       }
 
@@ -212,6 +217,26 @@ export class Evaluator {
       }
     }
     return new FunctionCall("abs", [node]);
+  }
+
+  private evaluateFloorCeil(
+    node: NumericalNode,
+    op: "floor" | "ceil",
+  ): Integer {
+    if (node.type === "INTEGER") return node;
+
+    const [num, den] =
+      node.type === "FRACTION"
+        ? [node.numerator, node.denominator]
+        : node.exponent >= 0n
+          ? [node.whole * 10n ** node.exponent, 1n]
+          : [node.whole, 10n ** -node.exponent];
+
+    const q = num / den;
+    const r = num % den;
+    if (r === 0n) return new Integer(q);
+    if (op === "floor") return new Integer(r < 0n ? q - 1n : q);
+    return new Integer(r > 0n ? q + 1n : q);
   }
 
   private symbolDomain(node: TreeNode): SymbolDomain | undefined {

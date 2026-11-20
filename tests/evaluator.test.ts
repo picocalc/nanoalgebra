@@ -750,7 +750,19 @@ describe("evaluate", () => {
       expect(simplify("x^3 / abs(x)").print()).toBe("x * abs(x)");
     });
 
-    it("handles custom functions", () => {
+    it("handles floor function", () => {
+      expect(simplify("floor(1)").print()).toBe("1");
+      expect(simplify("floor(1.5)").print()).toBe("1");
+      expect(simplify("floor(-1.5)").print()).toBe("-2");
+    });
+
+    it("should handle ceil function", () => {
+      expect(simplify("ceil(1)").print()).toBe("1");
+      expect(simplify("ceil(1.5)").print()).toBe("2");
+      expect(simplify("ceil(-1.5)").print()).toBe("-1");
+    });
+
+    it("handles functions", () => {
       const functions = new Set(["fn"]);
       expect(simplify("fn(1 + 1)", { functions }).print()).toBe("fn(2)");
       expect(simplify("fn(2 * 2, 5-3)", { functions }).print()).toBe(
