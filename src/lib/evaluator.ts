@@ -40,6 +40,8 @@ export class EvaluatorError extends AlgebraError {
   }
 }
 
+type Term = { coeff: NumericalNode; body: TreeNode };
+
 type SymbolDomain = "positive" | "negative" | "real" | "complex";
 
 export interface EvaluatorOptions {
@@ -220,7 +222,46 @@ export class Evaluator {
     if (isNumerical(node)) {
       return this.evaluateNumericFloorCeil(node, op);
     }
+    if (node.type === "ADD" || node.type === "SUBTRACT") {
+      const terms = this.extractTerms(node);
+      const nonIntTerms: Term[] = [];
+      const intTerms: Term[] = [];
+
+      for (const term of terms) {
+        if (isInteger(term.coeff) && isInteger(term.body)) {
+          intTerms.push(term);
+        } else {
+          nonIntTerms.push(term);
+        }
+      }
+
+      if (intTerms.length > 0) {
+        if (nonIntTerms.length === 0) return node;
+        return this.appendTerms(
+          new FunctionCall(op, [this.buildSum(nonIntTerms)]),
+          intTerms,
+        );
+      }
+    }
     return new FunctionCall(op, [node]);
+  }
+
+  private buildSum(terms: readonly Term[]): TreeNode {
+    const [first, ...rest] = terms;
+    if (!first) return Evaluator.ZERO;
+    return this.appendTerms(this.withCoeff(first.coeff, first.body), rest);
+  }
+
+  private appendTerms(initial: TreeNode, terms: readonly Term[]): TreeNode {
+    let acc = initial;
+    for (const term of terms) {
+      if (isNegative(term.coeff)) {
+        acc = new Subtract(acc, this.withCoeff(negate(term.coeff), term.body));
+      } else {
+        acc = new Add(acc, this.withCoeff(term.coeff, term.body));
+      }
+    }
+    return acc;
   }
 
   private evaluateNumericFloorCeil(
@@ -280,10 +321,7 @@ export class Evaluator {
     );
   }
 
-  private extractTerms(
-    node: TreeNode,
-    isSubtract = false,
-  ): { coeff: NumericalNode; body: TreeNode }[] {
+  private extractTerms(node: TreeNode, isSubtract = false): Term[] {
     if (node.type === "ADD") {
       return [
         ...this.extractTerms(node.left, isSubtract),
@@ -310,7 +348,7 @@ export class Evaluator {
       ...this.extractTerms(right, op === "SUBTRACT"),
     ];
 
-    const terms: { coeff: NumericalNode; body: TreeNode }[] = [];
+    const terms: Term[] = [];
     let changed = false;
 
     for (const term of rawTerms) {
@@ -329,19 +367,7 @@ export class Evaluator {
 
     if (!changed) return null;
 
-    const nonZero = terms.filter((t) => !isZero(t.coeff));
-    const first = nonZero[0];
-    if (!first) return Evaluator.ZERO;
-
-    let acc = this.withCoeff(first.coeff, first.body);
-    for (const term of nonZero.slice(1)) {
-      if (isNegative(term.coeff)) {
-        acc = new Subtract(acc, this.withCoeff(negate(term.coeff), term.body));
-      } else {
-        acc = new Add(acc, this.withCoeff(term.coeff, term.body));
-      }
-    }
-    return acc;
+    return this.buildSum(terms.filter((t) => !isZero(t.coeff)));
   }
 
   private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
@@ -498,9 +524,9 @@ export class Evaluator {
   ): TreeNode | null {
     if (left.type === "DIVIDE" || right.type === "DIVIDE") {
       const [n1, d1] =
-        left.type === "DIVIDE" ? [left.left, left.right] : [left, null];
+        left.type === "DIVIDE" ? [left.left, left.right] : [left];
       const [n2, d2] =
-        right.type === "DIVIDE" ? [right.left, right.right] : [right, null];
+        right.type === "DIVIDE" ? [right.left, right.right] : [right];
       const den = d1 && d2 ? new Multiply(d1, d2) : (d1 ?? d2)!;
       return this.simplify(new Divide(new Multiply(n1, n2), den));
     }
