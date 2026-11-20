@@ -450,6 +450,13 @@ describe("evaluate", () => {
       expect(simplify("pi - pi + e").print()).toBe("e");
       expect(simplify("e - e + pi").print()).toBe("pi");
 
+      expect(simplify("e + (pi - pi)").print()).toBe("e");
+      expect(simplify("pi + (e - e)").print()).toBe("pi");
+
+      expect(simplify("e + pi - pi").print()).toBe("e");
+      expect(simplify("e - pi + pi").print()).toBe("e");
+      expect(simplify("(e - pi) - (e - pi)").print()).toBe("0");
+
       expect(simplify("pi + e").print()).toBe("pi + e");
       expect(simplify("e + pi").print()).toBe("e + pi");
       expect(simplify("pi - e").print()).toBe("pi - e");
@@ -462,6 +469,9 @@ describe("evaluate", () => {
       expect(simplify("2 + pi").print()).toBe("2 + pi");
       expect(simplify("2 - e").print()).toBe("2 - e");
       expect(simplify("2 - pi").print()).toBe("2 - pi");
+
+      expect(simplify("e + pi + e").print()).toBe("2e + pi");
+      expect(simplify("e - pi + e").print()).toBe("2e - pi");
 
       expect(simplify("0pi + e").print()).toBe("e");
       expect(simplify("0e + pi").print()).toBe("pi");
@@ -745,7 +755,7 @@ describe("evaluate", () => {
       expect(simplify("(abs(x^3))^2").print()).toBe("x^6");
       expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
       expect(simplify("abs(-abs(x))").print()).toBe("abs(x)");
-      expect(simplify("abs(2x)").print()).toBe("2 * abs(x)");
+      expect(simplify("abs(2x)").print()).toBe("2abs(x)");
       expect(simplify("x^2 / abs(x)").print()).toBe("abs(x)");
       expect(simplify("x^3 / abs(x)").print()).toBe("x * abs(x)");
     });
@@ -756,9 +766,13 @@ describe("evaluate", () => {
 
       expect(simplify("floor(1.5)").print()).toBe("1");
       expect(simplify("ceil(1.5)").print()).toBe("2");
+      expect(simplify("floor(1.2e2)").print()).toBe("120");
+      expect(simplify("ceil(1.2e2)").print()).toBe("120");
 
       expect(simplify("floor(-1.5)").print()).toBe("-2");
       expect(simplify("ceil(-1.5)").print()).toBe("-1");
+      expect(simplify("floor(-1.2e2)").print()).toBe("-120");
+      expect(simplify("ceil(-1.2e2)").print()).toBe("-120");
 
       expect(simplify("floor(3/2)").print()).toBe("1");
       expect(simplify("ceil(3/2)").print()).toBe("2");
@@ -771,6 +785,12 @@ describe("evaluate", () => {
 
       expect(simplify("ceil(floor(x))").print()).toBe("floor(x)");
       expect(simplify("floor(ceil(x))").print()).toBe("ceil(x)");
+
+      expect(simplify("floor(floor(x) + floor(x))").print()).toBe("2floor(x)");
+      expect(simplify("ceil(ceil(x) + ceil(x))").print()).toBe("2ceil(x)");
+
+      expect(simplify("ceil(floor(x)^2)").print()).toBe("floor(x)^2");
+      expect(simplify("floor(ceil(x)^2)").print()).toBe("ceil(x)^2");
     });
 
     it("handles functions", () => {
@@ -814,7 +834,7 @@ describe("evaluate", () => {
       expect(simplify("abs(e^z)", options).print()).toBe("abs(e^z)");
       expect(simplify("abs(abs(z))", options).print()).toBe("abs(z)");
       expect(simplify("abs(-abs(z))", options).print()).toBe("abs(z)");
-      expect(simplify("abs(2z)", options).print()).toBe("2 * abs(z)");
+      expect(simplify("abs(2z)", options).print()).toBe("2abs(z)");
       expect(simplify("z^2 / abs(z)", options).print()).toBe("z^2 / abs(z)");
       expect(simplify("z^3 / abs(z)", options).print()).toBe("z^3 / abs(z)");
     });

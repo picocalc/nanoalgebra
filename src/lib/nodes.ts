@@ -204,6 +204,7 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
           !(
             isNumerical(right.left) &&
             (right.right.type === "SYMBOL" ||
+              right.right.type === "FUNCTION" ||
               (right.right.type === "POWER" &&
                 right.right.left.type === "SYMBOL"))
           ));
@@ -212,6 +213,7 @@ export class Multiply extends BaseNode<"MULTIPLY"> {
     }
     if (
       right.type === "SYMBOL" ||
+      right.type === "FUNCTION" ||
       (right.type === "POWER" && right.left.type === "SYMBOL")
     ) {
       if (left.type === "INTEGER" || left.type === "DECIMAL") {

@@ -3,6 +3,8 @@ import { powBitLength } from "bigint.bitlength";
 import type { NumericalNode, TreeNode } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
 
+export function negate(node: NumericalNode): NumericalNode;
+export function negate(node: TreeNode): TreeNode;
 export function negate(node: TreeNode): TreeNode {
   if (node.type === "UNDEFINED") return node;
   if (node.type === "INTEGER") return new Integer(-node.value);
@@ -60,7 +62,8 @@ export function isEvenInteger(node: TreeNode): boolean {
 }
 
 export function isInteger(node: TreeNode): boolean {
-  if (tryGetIntegerValue(node) !== null) return true;
+  if (node.type === "INTEGER") return true;
+  if (node.type === "DECIMAL") return node.exponent >= 0;
   if (
     node.type === "FUNCTION" &&
     (node.name === "floor" || node.name === "ceil") &&

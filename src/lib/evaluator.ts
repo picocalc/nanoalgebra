@@ -114,18 +114,13 @@ export class Evaluator {
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericBinary(left, right, node.type);
         }
-        const t1 = this.extractFactors(left);
-        const t2 = this.extractFactors(right);
-        if (isEqual(t1.body, t2.body)) {
-          return this.withCoeff(
-            this.evaluateNumericBinary(t1.coeff, t2.coeff, node.type),
-            t1.body,
-          );
-        }
         if (isZero(left)) {
           return node.type === "ADD" ? right : this.simplify(negate(right));
         }
-        return isZero(right) ? left : simplified;
+        if (isZero(right)) return left;
+        return (
+          this.tryAddSubtractSymbolic(left, right, node.type) ?? simplified
+        );
       }
 
       case "MULTIPLY": {
@@ -219,11 +214,11 @@ export class Evaluator {
   }
 
   private evaluateFloorCeil(node: TreeNode, op: "floor" | "ceil"): TreeNode {
-    if (isNumerical(node)) {
-      return this.evaluateNumericFloorCeil(node, op);
-    }
     if (isInteger(node)) {
       return node;
+    }
+    if (isNumerical(node)) {
+      return this.evaluateNumericFloorCeil(node, op);
     }
     return new FunctionCall(op, [node]);
   }
@@ -232,18 +227,9 @@ export class Evaluator {
     node: NumericalNode,
     op: "floor" | "ceil",
   ): Integer {
-    if (node.type === "INTEGER") return node;
-
-    const [num, den] =
-      node.type === "FRACTION"
-        ? [node.numerator, node.denominator]
-        : node.exponent >= 0n
-          ? [node.whole * 10n ** node.exponent, 1n]
-          : [node.whole, 10n ** -node.exponent];
-
-    const q = num / den;
-    const r = num % den;
-    if (r === 0n) return new Integer(q);
+    const { numerator, denominator } = Evaluator.toFraction(node);
+    const q = numerator / denominator;
+    const r = numerator % denominator;
     if (op === "floor") return new Integer(r < 0n ? q - 1n : q);
     return new Integer(r > 0n ? q + 1n : q);
   }
@@ -292,6 +278,70 @@ export class Evaluator {
         (exp2 !== undefined && this.isEvenRoot(exp2))) &&
       !this.isEvenRoot(newExp)
     );
+  }
+
+  private extractTerms(
+    node: TreeNode,
+    isSubtract = false,
+  ): { coeff: NumericalNode; body: TreeNode }[] {
+    if (node.type === "ADD") {
+      return [
+        ...this.extractTerms(node.left, isSubtract),
+        ...this.extractTerms(node.right, isSubtract),
+      ];
+    }
+    if (node.type === "SUBTRACT") {
+      return [
+        ...this.extractTerms(node.left, isSubtract),
+        ...this.extractTerms(node.right, !isSubtract),
+      ];
+    }
+    const { coeff, body } = this.extractFactors(node);
+    return [{ coeff: isSubtract ? negate(coeff) : coeff, body }];
+  }
+
+  private tryAddSubtractSymbolic(
+    left: DefinedNode,
+    right: DefinedNode,
+    op: "ADD" | "SUBTRACT",
+  ): TreeNode | null {
+    const rawTerms = [
+      ...this.extractTerms(left, false),
+      ...this.extractTerms(right, op === "SUBTRACT"),
+    ];
+
+    const terms: { coeff: NumericalNode; body: TreeNode }[] = [];
+    let changed = false;
+
+    for (const term of rawTerms) {
+      const existing = terms.find((t) => isEqual(t.body, term.body));
+      if (existing) {
+        existing.coeff = this.evaluateNumericBinary(
+          existing.coeff,
+          term.coeff,
+          "ADD",
+        );
+        changed = true;
+      } else {
+        terms.push(term);
+      }
+    }
+
+    if (!changed) return null;
+
+    const nonZero = terms.filter((t) => !isZero(t.coeff));
+    const first = nonZero[0];
+    if (!first) return Evaluator.ZERO;
+
+    let acc = this.withCoeff(first.coeff, first.body);
+    for (const term of nonZero.slice(1)) {
+      if (isNegative(term.coeff)) {
+        acc = new Subtract(acc, this.withCoeff(negate(term.coeff), term.body));
+      } else {
+        acc = new Add(acc, this.withCoeff(term.coeff, term.body));
+      }
+    }
+    return acc;
   }
 
   private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
@@ -387,9 +437,7 @@ export class Evaluator {
         const b = this.unpackBase(rightFactor);
         if (!isEqual(a.base, b.base)) continue;
 
-        const bExp = isDivide
-          ? this.evaluateNumericBinary(Evaluator.ZERO, b.exp, "SUBTRACT")
-          : b.exp;
+        const bExp = isDivide ? negate(b.exp) : b.exp;
 
         if (a.abs === b.abs) {
           const totalExp = this.evaluateNumericBinary(a.exp, bExp, "ADD");
@@ -494,15 +542,9 @@ export class Evaluator {
       if (!single) return null;
       const rightInfo = this.getBaseAndExp(single);
 
-      const totalExp = this.evaluateNumericBinary(
-        Evaluator.ZERO,
-        rightInfo.exp,
-        "SUBTRACT",
-      );
-
       return this.withCoeff(
         this.evaluateNumericDivide(num.coeff, den.coeff),
-        this.simplify(new Power(rightInfo.base, totalExp)),
+        this.simplify(new Power(rightInfo.base, negate(rightInfo.exp))),
       );
     }
 
