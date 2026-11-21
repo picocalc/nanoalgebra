@@ -350,6 +350,13 @@ describe("evaluate", () => {
       expect(printNode(simplify("8^(2/3)"))).toBe("4");
 
       expect(printNode(simplify("sqrt(24) * sqrt(6)"))).toBe("12");
+      expect(printNode(simplify("sqrt(24) / sqrt(6)"))).toBe("2");
+
+      expect(printNode(simplify("(-2)^(1/3) * (-4)^(1/3)"))).toBe("2");
+
+      expect(printNode(simplify("sqrt(4x)"))).toBe("2x^(1/2)");
+
+      expect(printNode(simplify("sqrt(2a * 2b)"))).toBe("2 * (a * b)^(1/2)");
     });
 
     it("handles exponentiation of negatives to a fractional power", () => {
