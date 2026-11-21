@@ -151,7 +151,7 @@ export function isEqual(left: TreeNode, right: TreeNode): boolean {
   return false;
 }
 
-export function formatDecimal(whole: bigint, exponent: bigint): string {
+export function formatDecimal({ whole, exponent }: Decimal): string {
   const exp = Number(exponent);
   if (exp >= 0) return whole.toString() + "0".repeat(exp);
   const isNegative = whole < 0n;

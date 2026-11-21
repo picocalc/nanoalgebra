@@ -58,7 +58,7 @@ export class Decimal extends BaseNode<"DECIMAL"> {
   }
 
   toString(): string {
-    const s = formatDecimal(this.whole, this.exponent);
+    const s = formatDecimal(this);
     return this.whole < 0n ? `(${s})` : s;
   }
 }

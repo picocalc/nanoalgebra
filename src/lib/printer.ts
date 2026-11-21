@@ -1,5 +1,5 @@
 import type { BinaryNode, DefinedNodeType, TreeNode } from "./nodes";
-import { isNegativeNumber, isNumerical } from "./shared";
+import { formatDecimal, isNegativeNumber, isNumerical } from "./shared";
 
 const PRECEDENCE = {
   INTEGER: 4,
@@ -57,17 +57,8 @@ function printNode(node: TreeNode): string {
     case "INTEGER":
       return node.value.toString();
 
-    case "DECIMAL": {
-      const { whole, exponent } = node;
-      const exp = Number(exponent);
-      if (exp >= 0) return whole.toString() + "0".repeat(exp);
-      const isNegative = whole < 0n;
-      const s = (isNegative ? -whole : whole).toString();
-      const padded = s.padStart(1 - exp, "0");
-      const cut = padded.length + exp;
-      const result = `${padded.slice(0, cut)}.${padded.slice(cut)}`;
-      return isNegative ? `-${result}` : result;
-    }
+    case "DECIMAL":
+      return formatDecimal(node);
 
     case "FRACTION":
       return `${node.numerator}/${node.denominator}`;
