@@ -1,6 +1,6 @@
 import { gcd } from "#math/gcd";
 
-import { EvaluatorError } from "./evaluator";
+import { EvaluatorError } from "./errors";
 import { formatDecimal } from "./shared";
 
 export type BinaryOpType =

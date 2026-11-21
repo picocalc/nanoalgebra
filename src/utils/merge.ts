@@ -1,16 +1,12 @@
 export function mergeMapWithDefaults<K, V>(
   defaults: ReadonlyMap<K, V>,
-  overrides?: ReadonlyMap<K, V | undefined>,
+  overrides?: ReadonlyMap<K, V>,
 ): ReadonlyMap<K, V> {
   if (!overrides?.size) return defaults;
 
   const result = new Map(defaults);
   for (const [key, value] of overrides) {
-    if (value === undefined) {
-      result.delete(key);
-    } else {
-      result.set(key, value);
-    }
+    result.set(key, value);
   }
   return result;
 }

@@ -1,6 +1,5 @@
 import { describe, it, expect } from "bun:test";
 
-import { Evaluator } from "#lib/evaluator";
 import { printNode } from "#lib/printer";
 import { simplify } from "#src";
 
@@ -13,46 +12,6 @@ function expectUndefined(expression: string) {
   expect(printNode(doubleSimplified)).toBe(printed);
   return expect(printed);
 }
-
-describe("Evaluator", () => {
-  it("can convert numbers to decimals", () => {
-    expect(printNode(Evaluator.asDecimal(simplify("0 * (1/2)")))).toBe("0");
-    expect(printNode(Evaluator.asDecimal(simplify("1")))).toBe("1");
-    expect(printNode(Evaluator.asDecimal(simplify("0.5")))).toBe("0.5");
-    expect(printNode(Evaluator.asDecimal(simplify("1/2")))).toBe("0.5");
-    expect(printNode(Evaluator.asDecimal(simplify("-1/2")))).toBe("-0.5");
-
-    expect(
-      printNode(Evaluator.asDecimal(simplify("1/3"), { sigFigs: 7 })),
-    ).toBe("0.3333333");
-    expect(
-      printNode(Evaluator.asDecimal(simplify("2/3"), { sigFigs: 7 })),
-    ).toBe("0.6666667");
-    expect(
-      printNode(
-        Evaluator.asDecimal(simplify("2/3"), {
-          sigFigs: 7,
-          roundingMode: "truncate",
-        }),
-      ),
-    ).toBe("0.6666666");
-    expect(
-      printNode(Evaluator.asDecimal(simplify("200/3"), { sigFigs: 7 })),
-    ).toBe("66.66667");
-  });
-
-  it("can convert decimals to fractions", () => {
-    expect(
-      printNode(Evaluator.toFraction(Evaluator.asDecimal(simplify("0.1")))),
-    ).toBe("1/10");
-  });
-
-  it.failing("can convert constants to fractions", () => {
-    expect(printNode(Evaluator.asDecimal(simplify("pi"), { sigFigs: 3 }))).toBe(
-      "3.14",
-    );
-  });
-});
 
 describe("evaluate", () => {
   it("handles a number", () => {

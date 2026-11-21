@@ -1,7 +1,6 @@
 import { lcm } from "#math/lcm";
 import { mergeMapWithDefaults } from "#utils/merge";
 
-import { AlgebraError } from "./errors";
 import type {
   BinaryNode,
   BinaryOpType,
@@ -36,12 +35,6 @@ import {
   tryGetIntegerValue,
   isNegativeOne,
 } from "./shared";
-
-export class EvaluatorError extends AlgebraError {
-  constructor(message: string) {
-    super("EvaluatorError", message);
-  }
-}
 
 type Term = { coeff: NumericalNode; body: TreeNode };
 
@@ -850,53 +843,5 @@ export class Evaluator {
     return node.exponent >= 0n
       ? new Fraction(node.whole * 10n ** node.exponent, 1n)
       : new Fraction(node.whole, 10n ** -node.exponent);
-  }
-
-  static asDecimal(
-    node: TreeNode,
-    {
-      sigFigs = 30,
-      roundingMode = "round",
-    }: { sigFigs?: number; roundingMode?: "round" | "truncate" } = {},
-  ): Decimal | Integer {
-    if (sigFigs <= 0) {
-      throw new EvaluatorError("Significant figures must be greater than 0");
-    }
-    if (!isNumerical(node)) {
-      throw new EvaluatorError(
-        `Cannot convert node type ${node.type} to decimal directly`,
-      );
-    }
-    if (node.type === "INTEGER") return node;
-
-    let { numerator: num, denominator: den } = Evaluator.toFraction(node);
-    if (num === 0n) return Evaluator.ZERO;
-
-    const isNegative = num < 0n;
-    if (isNegative) num = -num;
-
-    let scaleExp = 0n;
-    while (num < den) {
-      num *= 10n;
-      scaleExp -= 1n;
-    }
-    while (num >= den * 10n) {
-      den *= 10n;
-      scaleExp += 1n;
-    }
-
-    let coeff = 0n;
-    const targetDigits = BigInt(sigFigs);
-    for (let i = 0n; i < targetDigits + 1n; i++) {
-      coeff = coeff * 10n + num / den;
-      num = (num % den) * 10n;
-    }
-
-    const extraDigit = coeff % 10n;
-    coeff /= 10n;
-    if (roundingMode === "round" && extraDigit >= 5n) coeff += 1n;
-
-    const finalExp = scaleExp - (targetDigits - 1n);
-    return Evaluator.normalizeDecimal(isNegative ? -coeff : coeff, finalExp);
   }
 }
