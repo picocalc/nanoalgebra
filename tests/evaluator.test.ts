@@ -404,6 +404,12 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(0.25)"))).toBe("1/2");
     });
 
+    it("handles exponentiation of large numbers to a fractional power", () => {
+      expect(printNode(simplify("sqrt(10 ^ 10^10)"))).toBe("10^5000000000");
+      expect(printNode(simplify("(10^1e10)^1e-9"))).toBe("10000000000");
+      expect(printNode(simplify("(10^1e10)^1e-10"))).toBe("10");
+    });
+
     it("handles exponentiation of negatives to a fractional power", () => {
       expectUndefined("sqrt(-1)").toMatchInlineSnapshot(`"(-1)^(1/2)"`);
       expectUndefined("sqrt(-1) * sqrt(-1)").toMatchInlineSnapshot(
