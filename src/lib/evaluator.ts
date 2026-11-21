@@ -424,6 +424,9 @@ export class Evaluator {
     if (node.type === "MULTIPLY") {
       const left = this.extractFactors(node.left);
       const right = this.extractFactors(node.right);
+      // Invariant: extractFactors is only called on simplified nodes, and
+      // tryMultiplySymbolic always merges pairs where both sides have a non-1
+      // coeff. Thus at most one side can have a non-1 coeff here.
       const coeff = isOne(left.coeff) ? right.coeff : left.coeff;
       const body = isOne(left.body)
         ? right.body
