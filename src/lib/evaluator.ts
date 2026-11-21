@@ -6,6 +6,7 @@ import type {
   BinaryOpType,
   DefinedNode,
   NumericalNode,
+  SymbolNode,
   TreeNode,
 } from "./nodes";
 import {
@@ -70,9 +71,15 @@ export class Evaluator {
       case "INTEGER":
       case "DECIMAL":
       case "FRACTION":
-      case "SYMBOL":
       case "UNDEFINED":
         return node;
+
+      case "SYMBOL": {
+        if (this.symbolDomain(node) === "complex" && !this.options.complex) {
+          return new Undefined(node);
+        }
+        return node;
+      }
 
       case "FUNCTION": {
         const {
@@ -163,9 +170,7 @@ export class Evaluator {
         if (isOne(right)) return left;
         if (isZero(right) || isOne(left)) return Evaluator.ONE;
         if (isZero(left)) {
-          return isNegativeNumber(right)
-            ? new Undefined(simplified)
-            : Evaluator.ZERO;
+          return isNegativeNumber(right) ? new Undefined(simplified) : left;
         }
         if (
           !this.options.complex &&
@@ -324,6 +329,20 @@ export class Evaluator {
       );
     }
     return false;
+  }
+
+  private evaluateImaginaryPower(i: SymbolNode, exp: bigint): TreeNode {
+    const rem = ((exp % 4n) + 4n) % 4n;
+    switch (rem) {
+      case 0n:
+        return Evaluator.ONE;
+      case 1n:
+        return i;
+      case 2n:
+        return new Integer(-1n);
+      default:
+        return negate(i);
+    }
   }
 
   private isEvenRoot(exp: TreeNode): boolean {
@@ -634,6 +653,10 @@ export class Evaluator {
     right: DefinedNode,
     expInt: bigint | null,
   ): TreeNode | null {
+    if (left.type === "SYMBOL" && left.name === "i" && expInt !== null) {
+      return this.evaluateImaginaryPower(left, expInt);
+    }
+
     if (left.type === "POWER") {
       const innerBase = left.left;
       const innerExp = left.right;

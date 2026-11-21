@@ -847,6 +847,29 @@ describe("evaluate", () => {
   describe("complex domain", () => {
     const options = { complex: true, constants, functions };
 
+    it("i", () => {
+      expect(printNode(simplify("i", options))).toBe("i");
+
+      expectUndefined("i").toMatchInlineSnapshot(`"i"`);
+      expectUndefined("i^2").toMatchInlineSnapshot(`"i^2"`);
+    });
+
+    it("handles exponentiation of i", () => {
+      expect(printNode(simplify("i^2", options))).toBe("-1");
+      expect(printNode(simplify("i^3", options))).toBe("-i");
+      expect(printNode(simplify("i^4", options))).toBe("1");
+
+      expect(printNode(simplify("i^5", options))).toBe("i");
+      expect(printNode(simplify("i^6", options))).toBe("-1");
+      expect(printNode(simplify("i^7", options))).toBe("-i");
+      expect(printNode(simplify("i^8", options))).toBe("1");
+
+      expect(printNode(simplify("i^-1", options))).toBe("-i");
+      expect(printNode(simplify("i^-2", options))).toBe("-1");
+      expect(printNode(simplify("i^-3", options))).toBe("i");
+      expect(printNode(simplify("i^-4", options))).toBe("1");
+    });
+
     it("handles fractional exponents in complex domain", () => {
       expect(printNode(simplify("(z^(1/2))^2", options))).toBe("z");
       expect(printNode(simplify("(z^2)^(1/2)", options))).toBe("(z^2)^(1/2)");
