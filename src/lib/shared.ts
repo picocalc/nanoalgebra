@@ -89,11 +89,20 @@ export function isInteger(node: TreeNode): boolean {
 }
 
 export function isEqual(left: TreeNode, right: TreeNode): boolean {
+  if (left.type === "SYMBOL" && right.type === "SYMBOL") {
+    return left.name === right.name;
+  }
   if (left.type === "INTEGER" && right.type === "INTEGER") {
     return left.value === right.value;
   }
-  if (left.type === "SYMBOL" && right.type === "SYMBOL") {
-    return left.name === right.name;
+  if (left.type === "DECIMAL" && right.type === "DECIMAL") {
+    return left.whole === right.whole && left.exponent === right.exponent;
+  }
+  if (left.type === "FRACTION" && right.type === "FRACTION") {
+    return (
+      left.numerator === right.numerator &&
+      left.denominator === right.denominator
+    );
   }
   if (left.type === "POWER" && right.type === "POWER") {
     return isEqual(left.left, right.left) && isEqual(left.right, right.right);
@@ -110,6 +119,7 @@ export function isEqual(left: TreeNode, right: TreeNode): boolean {
   if (left.type === "FUNCTION" && right.type === "FUNCTION") {
     return (
       left.name === right.name &&
+      left.args.length === right.args.length &&
       left.args.every((val, i) => right.args[i] && isEqual(val, right.args[i]))
     );
   }
