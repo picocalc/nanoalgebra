@@ -393,6 +393,13 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(2a * 2b)"))).toBe("2 * (a * b)^(1/2)");
     });
 
+    it("handles exponentiation of fractions to a fractional power", () => {
+      expect(printNode(simplify("sqrt(4/9)"))).toBe("2/3");
+      expect(printNode(simplify("(4/9)^(-1/2)"))).toBe("3/2");
+      expect(printNode(simplify("(8/27)^(1/3)"))).toBe("2/3");
+      expect(printNode(simplify("(-8/27)^(1/3)"))).toBe("-2/3");
+    });
+
     it("handles exponentiation of negatives to a fractional power", () => {
       expectUndefined("sqrt(-1)").toMatchInlineSnapshot(`"(-1)^(1/2)"`);
       expectUndefined("sqrt(-1) * sqrt(-1)").toMatchInlineSnapshot(
