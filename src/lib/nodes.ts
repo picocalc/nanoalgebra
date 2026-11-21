@@ -1,7 +1,7 @@
 import { gcd } from "#math/gcd";
 
 import { EvaluatorError } from "./errors";
-import { formatDecimal } from "./shared";
+import { formatDecimal } from "./printer";
 
 export type BinaryOpType =
   | "ADD"

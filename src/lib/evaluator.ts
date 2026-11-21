@@ -3,6 +3,7 @@ import { lcm } from "#math/lcm";
 import { mergeMapWithDefaults } from "#utils/merge";
 
 import { ONE, ZERO } from "./constants";
+import { negate, toFraction } from "./convert";
 import type {
   BinaryNode,
   BinaryOpType,
@@ -33,7 +34,6 @@ import {
   isOne,
   isZero,
   isInteger,
-  negate,
   tryGetIntegerValue,
   isNegativeOne,
 } from "./shared";
@@ -277,7 +277,7 @@ export class Evaluator {
     node: NumericalNode,
     op: "floor" | "ceil",
   ): Integer {
-    const { numerator, denominator } = Evaluator.toFraction(node);
+    const { numerator, denominator } = toFraction(node);
     const q = numerator / denominator;
     const r = numerator % denominator;
     if (op === "floor") return new Integer(r < 0n ? q - 1n : q);
@@ -344,9 +344,7 @@ export class Evaluator {
   }
 
   private isEvenRoot(exp: TreeNode): boolean {
-    return (
-      isNumerical(exp) && Evaluator.toFraction(exp).denominator % 2n === 0n
-    );
+    return isNumerical(exp) && toFraction(exp).denominator % 2n === 0n;
   }
 
   private losesEvenRoot(
@@ -512,9 +510,9 @@ export class Evaluator {
             const totalExp = this.evaluateNumericBinary(a.exp, bExp, "ADD");
             used[j] = true;
             if (!a.abs && this.losesEvenRoot(a.base, totalExp, a.exp, b.exp)) {
-              const f1 = Evaluator.toFraction(a.exp);
-              const f2 = Evaluator.toFraction(b.exp);
-              const fTotal = Evaluator.toFraction(totalExp);
+              const f1 = toFraction(a.exp);
+              const f2 = toFraction(b.exp);
+              const fTotal = toFraction(totalExp);
               const rootDenom = lcm(f1.denominator, f2.denominator);
               const outerExp =
                 (fTotal.numerator * rootDenom) / fTotal.denominator;
@@ -759,17 +757,14 @@ export class Evaluator {
     decOp: (d1: Decimal, d2: Decimal) => [bigint, bigint],
   ): NumericalNode {
     if (left.type === "FRACTION" || right.type === "FRACTION") {
-      const [n, d] = fracOp(
-        Evaluator.toFraction(left),
-        Evaluator.toFraction(right),
-      );
+      const [n, d] = fracOp(toFraction(left), toFraction(right));
       return this.normalizeFraction(n, d);
     }
     const [coeff, exp] = decOp(
       left.type === "INTEGER" ? new Decimal(left.value, 0n) : left,
       right.type === "INTEGER" ? new Decimal(right.value, 0n) : right,
     );
-    return Evaluator.normalizeDecimal(coeff, exp);
+    return this.normalizeDecimal(coeff, exp);
   }
 
   private evaluateNumericBinary(
@@ -809,8 +804,8 @@ export class Evaluator {
     left: NumericalNode,
     right: NumericalNode,
   ): NumericalNode {
-    const f1 = Evaluator.toFraction(left);
-    const f2 = Evaluator.toFraction(right);
+    const f1 = toFraction(left);
+    const f2 = toFraction(right);
     return this.normalizeFraction(
       f1.numerator * f2.denominator,
       f1.denominator * f2.numerator,
@@ -840,12 +835,12 @@ export class Evaluator {
     left: NumericalNode,
     right: NumericalNode,
   ): TreeNode | null {
-    const exp = Evaluator.toFraction(right);
+    const exp = toFraction(right);
     if (exp.denominator === 1n) {
       return this.evaluatePower(left, exp.numerator);
     }
 
-    const base = Evaluator.toFraction(left);
+    const base = toFraction(left);
     const isNegBase = base.numerator < 0n;
     if (isNegBase) {
       if (!this.complex) {
@@ -894,14 +889,11 @@ export class Evaluator {
         if (isAbovePowThreshold(base.whole, exp)) {
           return new Power(base, new Integer(exp));
         }
-        return Evaluator.normalizeDecimal(
-          base.whole ** exp,
-          base.exponent * exp,
-        );
+        return this.normalizeDecimal(base.whole ** exp, base.exponent * exp);
       }
     }
 
-    const f = Evaluator.toFraction(base);
+    const f = toFraction(base);
     const [num, den, e] =
       exp > 0n
         ? [f.numerator, f.denominator, exp]
@@ -912,10 +904,7 @@ export class Evaluator {
       : this.normalizeFraction(num ** e, den ** e);
   }
 
-  private static normalizeDecimal(
-    coeff: bigint,
-    exp: bigint,
-  ): Decimal | Integer {
+  private normalizeDecimal(coeff: bigint, exp: bigint): Decimal | Integer {
     if (coeff === 0n) return ZERO;
     while (coeff % 10n === 0n && exp < 0n) {
       coeff /= 10n;
@@ -927,13 +916,5 @@ export class Evaluator {
   private normalizeFraction(n: bigint, d: bigint): Integer | Fraction {
     const frac = new Fraction(n, d);
     return frac.denominator === 1n ? new Integer(frac.numerator) : frac;
-  }
-
-  static toFraction(node: NumericalNode): Fraction {
-    if (node.type === "FRACTION") return node;
-    if (node.type === "INTEGER") return new Fraction(node.value, 1n);
-    return node.exponent >= 0n
-      ? new Fraction(node.whole * 10n ** node.exponent, 1n)
-      : new Fraction(node.whole, 10n ** -node.exponent);
   }
 }

@@ -2,6 +2,7 @@ import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 import { mergeSetWithDefaults } from "#utils/merge";
 
+import { negate } from "./convert";
 import type { TreeNode } from "./nodes";
 import {
   Add,
@@ -16,7 +17,6 @@ import {
   SymbolNode,
   Undefined,
 } from "./nodes";
-import { negate } from "./shared";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -119,13 +119,13 @@ export class Parser {
     if (token.type === "NUMBER") {
       this.consume(token);
 
-      if (token.fraction !== undefined || token.exponent !== undefined) {
+      if (token.fraction || token.exponent) {
         const wholePart = token.whole === "" ? "0" : token.whole;
         const fracPart = token.fraction ?? "";
         const combinedCoeff = BigInt(wholePart + fracPart);
 
         let exp = -BigInt(fracPart.length);
-        if (token.exponent !== undefined) {
+        if (token.exponent) {
           exp += BigInt(token.exponent);
         }
 
@@ -190,13 +190,11 @@ export class Parser {
         (token.type === "NUMBER" &&
           (prev?.type === "RPAREN" || prev?.type === "LPAREN"));
 
-      if (canImplicitMultiply) {
-        const right = this.parseExponent();
-        prev = undefined;
-        left = new Multiply(left, right);
-      } else {
-        break;
-      }
+      if (!canImplicitMultiply) break;
+
+      const right = this.parseExponent();
+      prev = undefined;
+      left = new Multiply(left, right);
     }
 
     return left;

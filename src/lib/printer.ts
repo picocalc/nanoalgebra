@@ -1,5 +1,5 @@
-import type { BinaryNode, DefinedNodeType, TreeNode } from "./nodes";
-import { formatDecimal, isNegativeNumber, isNumerical } from "./shared";
+import type { BinaryNode, Decimal, DefinedNodeType, TreeNode } from "./nodes";
+import { isNegativeNumber, isNumerical } from "./shared";
 
 const PRECEDENCE = {
   INTEGER: 4,
@@ -133,4 +133,15 @@ function printNode(node: TreeNode): string {
   }
 }
 
-export { printNode };
+function formatDecimal({ whole, exponent }: Decimal): string {
+  const exp = Number(exponent);
+  if (exp >= 0) return whole.toString() + "0".repeat(exp);
+  const isNegative = whole < 0n;
+  const s = (isNegative ? -whole : whole).toString();
+  const padded = s.padStart(1 - exp, "0");
+  const cut = padded.length + exp;
+  const result = `${padded.slice(0, cut)}.${padded.slice(cut)}`;
+  return isNegative ? `-${result}` : result;
+}
+
+export { printNode, formatDecimal };

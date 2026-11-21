@@ -1,25 +1,6 @@
 import { powBitLength } from "bigint.bitlength";
 
 import type { NumericalNode, TreeNode } from "./nodes";
-import { Decimal, Fraction, Integer, Multiply } from "./nodes";
-
-export function negate(node: NumericalNode): NumericalNode;
-export function negate(node: TreeNode): TreeNode;
-export function negate(node: TreeNode): TreeNode {
-  if (node.type === "UNDEFINED") return node;
-  if (node.type === "INTEGER") return new Integer(-node.value);
-  if (node.type === "DECIMAL") return new Decimal(-node.whole, node.exponent);
-  if (node.type === "FRACTION")
-    return new Fraction(-node.numerator, node.denominator);
-  if (
-    node.type === "MULTIPLY" &&
-    isNegativeNumber(node.left) &&
-    node.left.type !== "UNDEFINED"
-  ) {
-    return new Multiply(negate(node.left), node.right);
-  }
-  return new Multiply(new Integer(-1), node);
-}
 
 export function isNegativeNumber(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value < 0n;
@@ -149,17 +130,6 @@ export function isEqual(left: TreeNode, right: TreeNode): boolean {
     );
   }
   return false;
-}
-
-export function formatDecimal({ whole, exponent }: Decimal): string {
-  const exp = Number(exponent);
-  if (exp >= 0) return whole.toString() + "0".repeat(exp);
-  const isNegative = whole < 0n;
-  const s = (isNegative ? -whole : whole).toString();
-  const padded = s.padStart(1 - exp, "0");
-  const cut = padded.length + exp;
-  const result = `${padded.slice(0, cut)}.${padded.slice(cut)}`;
-  return isNegative ? `-${result}` : result;
 }
 
 export const POW_BITS_THRESHOLD = 40_000n;
