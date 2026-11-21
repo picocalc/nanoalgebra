@@ -356,6 +356,13 @@ describe("evaluate", () => {
       expect(printNode(simplify("8^(-2/3)"))).toBe("1/4");
       expect(printNode(simplify("32^-0.2"))).toBe("1/2");
 
+      expect(printNode(simplify("(-8)^(1/3)"))).toBe("-2");
+      expect(printNode(simplify("(-8)^(2/3)"))).toBe("4");
+      expect(printNode(simplify("(-32)^0.2"))).toBe("-2");
+      expect(printNode(simplify("(-343)^(1/3)"))).toBe("-7");
+      expect(printNode(simplify("(-216)^(4/3)"))).toBe("1296");
+      expect(printNode(simplify("(-1e-101)^(1/101)"))).toBe("-1/10");
+
       expect(printNode(simplify("sqrt(24) * sqrt(6)"))).toBe("12");
       expect(printNode(simplify("sqrt(24) / sqrt(6)"))).toBe("2");
 
@@ -862,6 +869,11 @@ describe("evaluate", () => {
       expect(printNode(simplify("(z^(1/2))^2", options))).toBe("z");
       expect(printNode(simplify("(z^2)^(1/2)", options))).toBe("(z^2)^(1/2)");
       expect(printNode(simplify("(z^3)^(1/3)", options))).toBe("(z^3)^(1/3)");
+
+      expect(printNode(simplify("216^(4/3)", options))).toBe("1296");
+      expect(printNode(simplify("32^-0.2", options))).toBe("1/2");
+
+      expect(printNode(simplify("(-8)^(1/3)", options))).not.toBe("-2");
     });
 
     it("handles sqrt function in complex domain", () => {
@@ -877,9 +889,6 @@ describe("evaluate", () => {
 
       expect(printNode(simplify("sqrt(-1)", options))).toBe("i");
       expect(printNode(simplify("sqrt(-16)", options))).toBe("4i");
-
-      expect(printNode(simplify("216^(4/3)", options))).toBe("1296");
-      expect(printNode(simplify("32^-0.2", options))).toBe("1/2");
     });
 
     it("handles abs function in complex domain", () => {

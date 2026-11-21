@@ -332,7 +332,7 @@ export class Evaluator {
   }
 
   private evaluateImaginaryPower(i: SymbolNode, exp: bigint): TreeNode {
-    const rem = ((exp % 4n) + 4n) % 4n;
+    const rem = exp & 3n;
     switch (rem) {
       case 0n:
         return Evaluator.ONE;
@@ -845,42 +845,44 @@ export class Evaluator {
     left: NumericalNode,
     right: NumericalNode,
   ): TreeNode | null {
-    const expFrac = Evaluator.toFraction(right);
-    if (expFrac.denominator === 1n) {
-      return this.evaluatePower(left, expFrac.numerator);
+    const exp = Evaluator.toFraction(right);
+    if (exp.denominator === 1n) {
+      return this.evaluatePower(left, exp.numerator);
     }
 
-    const baseFrac = Evaluator.toFraction(left);
-    const isNegBase = baseFrac.numerator < 0n;
-    if (isNegBase && expFrac.denominator % 2n === 0n) {
-      if (!this.complex) return null;
+    const base = Evaluator.toFraction(left);
+    const isNegBase = base.numerator < 0n;
+    if (isNegBase) {
+      if (!this.complex) {
+        if (exp.denominator % 2n === 0n) return null;
+      } else {
+        if (exp.denominator === 2n) {
+          const mag = this.simplify(new Power(negate(left), right));
+          const rem = exp.numerator & 3n;
+          const signedMag = rem === 3n ? this.simplify(negate(mag)) : mag;
+          return this.withCoeff(signedMag, new SymbolNode("i"));
+        }
 
-      if (expFrac.denominator === 2n) {
+        if (isNegativeOne(left)) return null;
         const mag = this.simplify(new Power(negate(left), right));
-        const rem = ((expFrac.numerator % 4n) + 4n) % 4n;
-        const signedMag = rem === 3n ? this.simplify(negate(mag)) : mag;
-        return this.withCoeff(signedMag, new SymbolNode("i"));
+        return this.withCoeff(mag, new Power(new Integer(-1n), right));
       }
-
-      if (isNegativeOne(left)) return null;
-      const mag = this.simplify(new Power(negate(left), right));
-      return this.withCoeff(mag, new Power(new Integer(-1n), right));
     }
 
-    const absNum = isNegBase ? -baseFrac.numerator : baseFrac.numerator;
-    const rootNum = iNthRoot(absNum, expFrac.denominator);
+    const absNum = isNegBase ? -base.numerator : base.numerator;
+    const rootNum = iNthRoot(absNum, exp.denominator);
     if (rootNum === null) return null;
 
-    const rootDen = iNthRoot(baseFrac.denominator, expFrac.denominator);
+    const rootDen = iNthRoot(base.denominator, exp.denominator);
     if (rootDen === null) return null;
 
     const root = this.normalizeFraction(
       isNegBase ? -rootNum : rootNum,
       rootDen,
     );
-    return expFrac.numerator === 1n
+    return exp.numerator === 1n
       ? root
-      : this.evaluatePower(root, expFrac.numerator);
+      : this.evaluatePower(root, exp.numerator);
   }
 
   private evaluatePower(
