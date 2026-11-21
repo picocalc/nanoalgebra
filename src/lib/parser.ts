@@ -2,6 +2,7 @@ import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
 import { mergeSetWithDefaults } from "#utils/merge";
 
+import { ZERO } from "./constants";
 import { negate } from "./convert";
 import type { TreeNode } from "./nodes";
 import {
@@ -122,14 +123,16 @@ export class Parser {
       if (token.fraction || token.exponent) {
         const wholePart = token.whole === "" ? "0" : token.whole;
         const fracPart = token.fraction ?? "";
-        const combinedCoeff = BigInt(wholePart + fracPart);
+        const coeff = BigInt(wholePart + fracPart);
+
+        if (coeff === 0n) return ZERO;
 
         let exp = -BigInt(fracPart.length);
         if (token.exponent) {
           exp += BigInt(token.exponent);
         }
 
-        return new Decimal(combinedCoeff, exp);
+        return new Decimal(coeff, exp);
       }
 
       return new Integer(token.whole);
