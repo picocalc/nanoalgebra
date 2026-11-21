@@ -5,6 +5,7 @@ import { tokenize } from "#lib/lexer";
 import type { TreeNode } from "#lib/nodes";
 import type { ParserOptions } from "#lib/parser";
 import { functions, Parser } from "#lib/parser";
+import { printNode } from "#lib/printer";
 
 function parse(expression: string, options?: ParserOptions): TreeNode {
   const tokens = tokenize(expression);
@@ -24,6 +25,7 @@ export {
   simplify,
   parse,
   tokenize,
+  printNode,
   Parser,
   Evaluator,
   constants,

@@ -56,6 +56,7 @@ export const constants: ReadonlyMap<string, SymbolDomain> = new Map<
 >([
   ["pi", "positive"],
   ["e", "positive"],
+  ["i", "complex"],
 ]);
 
 export class Evaluator {
