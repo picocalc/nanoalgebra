@@ -13,6 +13,7 @@
   "imports": {
     "#src": "./src/index.ts",
     "#lib/*": "./src/lib/*.ts",
+    "#utils/*": "./src/utils/*.ts",
     "#math/*": "./src/math/*.ts"
   },
   "exports": {

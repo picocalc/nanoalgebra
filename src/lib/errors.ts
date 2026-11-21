@@ -10,3 +10,9 @@ export class AlgebraError extends Error {
     this.name = name;
   }
 }
+
+export class EvaluatorError extends AlgebraError {
+  constructor(message: string) {
+    super("EvaluatorError", message);
+  }
+}

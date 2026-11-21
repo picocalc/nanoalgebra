@@ -151,6 +151,17 @@ export function isEqual(left: TreeNode, right: TreeNode): boolean {
   return false;
 }
 
+export function formatDecimal(whole: bigint, exponent: bigint): string {
+  const exp = Number(exponent);
+  if (exp >= 0) return whole.toString() + "0".repeat(exp);
+  const isNegative = whole < 0n;
+  const s = (isNegative ? -whole : whole).toString();
+  const padded = s.padStart(1 - exp, "0");
+  const cut = padded.length + exp;
+  const result = `${padded.slice(0, cut)}.${padded.slice(cut)}`;
+  return isNegative ? `-${result}` : result;
+}
+
 export const POW_BITS_THRESHOLD = 40_000n;
 
 export function isAbovePowThreshold(base: bigint, exp: bigint): boolean {
