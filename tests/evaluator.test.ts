@@ -673,6 +673,8 @@ describe("evaluate", () => {
       expect(simplify("pi(2pi / pi^2)").print()).toBe("2");
 
       expect(simplify("(-pi - 1) / -1").print()).toBe("pi + 1");
+
+      expect(simplify("(e + pi) / (e + pi)").print()).toBe("1");
     });
 
     it("handles exponentiation of constants", () => {
