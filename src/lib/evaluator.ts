@@ -25,12 +25,14 @@ import {
   isAbovePowThreshold,
   isEqual,
   isEvenInteger,
-  isNegative,
+  isNegativeNumber,
   isNumerical,
   isOne,
   isZero,
+  isInteger,
   negate,
   tryGetIntegerValue,
+  isNegativeOne,
 } from "./shared";
 
 export class EvaluatorError extends AlgebraError {
@@ -38,6 +40,8 @@ export class EvaluatorError extends AlgebraError {
     super("EvaluatorError", message);
   }
 }
+
+type Term = { coeff: NumericalNode; body: TreeNode };
 
 type SymbolDomain = "positive" | "negative" | "real" | "complex";
 
@@ -87,6 +91,9 @@ export class Evaluator {
         if (name === "sqrt") {
           return this.simplify(new Power(args[0], new Fraction(1n, 2n)));
         }
+        if (name === "floor" || name === "ceil") {
+          return this.evaluateFloorCeil(args[0], name);
+        }
         return simplified;
       }
 
@@ -110,18 +117,13 @@ export class Evaluator {
         if (isNumerical(left) && isNumerical(right)) {
           return this.evaluateNumericBinary(left, right, node.type);
         }
-        const t1 = this.extractFactors(left);
-        const t2 = this.extractFactors(right);
-        if (isEqual(t1.body, t2.body)) {
-          return this.withCoeff(
-            this.evaluateNumericBinary(t1.coeff, t2.coeff, node.type),
-            t1.body,
-          );
-        }
         if (isZero(left)) {
           return node.type === "ADD" ? right : this.simplify(negate(right));
         }
-        return isZero(right) ? left : simplified;
+        if (isZero(right)) return left;
+        return (
+          this.tryAddSubtractSymbolic(left, right, node.type) ?? simplified
+        );
       }
 
       case "MULTIPLY": {
@@ -160,15 +162,14 @@ export class Evaluator {
         if (isOne(right)) return left;
         if (isZero(right) || isOne(left)) return Evaluator.ONE;
         if (isZero(left)) {
-          return isNumerical(right) && isNegative(right)
+          return isNegativeNumber(right)
             ? new Undefined(simplified)
             : Evaluator.ZERO;
         }
         if (
           !this.options.complex &&
           this.isEvenRoot(right) &&
-          ((isNumerical(left) && isNegative(left)) ||
-            this.symbolDomain(left) === "negative")
+          (isNegativeNumber(left) || this.symbolDomain(left) === "negative")
         ) {
           return new Undefined(simplified);
         }
@@ -203,8 +204,9 @@ export class Evaluator {
   }
 
   private evaluateAbs(node: TreeNode): TreeNode {
-    if (isNumerical(node)) return isNegative(node) ? negate(node) : node;
+    if (isNumerical(node)) return isNegativeNumber(node) ? negate(node) : node;
     if (this.isPositive(node)) return node;
+    if (this.isNegative(node)) return this.simplify(negate(node));
     if (node.type === "MULTIPLY") {
       const { coeff, body } = this.extractFactors(node);
       if (!isOne(coeff)) {
@@ -212,6 +214,68 @@ export class Evaluator {
       }
     }
     return new FunctionCall("abs", [node]);
+  }
+
+  private evaluateFloorCeil(node: TreeNode, op: "floor" | "ceil"): TreeNode {
+    if (isInteger(node)) {
+      return node;
+    }
+    if (isNumerical(node)) {
+      return this.evaluateNumericFloorCeil(node, op);
+    }
+    if (node.type === "ADD" || node.type === "SUBTRACT") {
+      const terms = this.extractTerms(node);
+      const nonIntTerms: Term[] = [];
+      const intTerms: Term[] = [];
+
+      for (const term of terms) {
+        if (isInteger(term.coeff) && isInteger(term.body)) {
+          intTerms.push(term);
+        } else {
+          nonIntTerms.push(term);
+        }
+      }
+
+      if (intTerms.length > 0) {
+        if (nonIntTerms.length === 0) return node;
+        return this.simplify(
+          this.appendTerms(
+            new FunctionCall(op, [this.buildSum(nonIntTerms)]),
+            intTerms,
+          ),
+        );
+      }
+    }
+    return new FunctionCall(op, [node]);
+  }
+
+  private buildSum(terms: readonly Term[]): TreeNode {
+    const [first, ...rest] = terms;
+    if (!first) return Evaluator.ZERO;
+    return this.appendTerms(this.withCoeff(first.coeff, first.body), rest);
+  }
+
+  private appendTerms(initial: TreeNode, terms: readonly Term[]): TreeNode {
+    let acc = initial;
+    for (const term of terms) {
+      if (isNegativeNumber(term.coeff)) {
+        acc = new Subtract(acc, this.withCoeff(negate(term.coeff), term.body));
+      } else {
+        acc = new Add(acc, this.withCoeff(term.coeff, term.body));
+      }
+    }
+    return acc;
+  }
+
+  private evaluateNumericFloorCeil(
+    node: NumericalNode,
+    op: "floor" | "ceil",
+  ): Integer {
+    const { numerator, denominator } = Evaluator.toFraction(node);
+    const q = numerator / denominator;
+    const r = numerator % denominator;
+    if (op === "floor") return new Integer(r < 0n ? q - 1n : q);
+    return new Integer(r > 0n ? q + 1n : q);
   }
 
   private symbolDomain(node: TreeNode): SymbolDomain | undefined {
@@ -227,7 +291,7 @@ export class Evaluator {
   }
 
   private isPositive(node: TreeNode): boolean {
-    if (isNumerical(node)) return !isNegative(node);
+    if (isNumerical(node)) return !isNegativeNumber(node);
     if (this.symbolDomain(node) === "positive") return true;
     if (node.type === "FUNCTION" && node.name === "abs") return true;
     if (node.type === "POWER") {
@@ -235,6 +299,28 @@ export class Evaluator {
         return true;
       }
       return this.isPositive(node.left) && this.isReal(node.right);
+    }
+    if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+      return (
+        (this.isPositive(node.left) && this.isPositive(node.right)) ||
+        (this.isNegative(node.left) && this.isNegative(node.right))
+      );
+    }
+    return false;
+  }
+
+  private isNegative(node: TreeNode): boolean {
+    if (isNegativeNumber(node)) return true;
+    if (this.symbolDomain(node) === "negative") return true;
+    if (node.type === "POWER") {
+      const exp = tryGetIntegerValue(node.right);
+      return exp !== null && exp % 2n !== 0n && this.isNegative(node.left);
+    }
+    if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
+      return (
+        (this.isPositive(node.left) && this.isNegative(node.right)) ||
+        (this.isNegative(node.left) && this.isPositive(node.right))
+      );
     }
     return false;
   }
@@ -258,6 +344,55 @@ export class Evaluator {
         (exp2 !== undefined && this.isEvenRoot(exp2))) &&
       !this.isEvenRoot(newExp)
     );
+  }
+
+  private extractTerms(node: TreeNode, isSubtract = false): Term[] {
+    if (node.type === "ADD") {
+      return [
+        ...this.extractTerms(node.left, isSubtract),
+        ...this.extractTerms(node.right, isSubtract),
+      ];
+    }
+    if (node.type === "SUBTRACT") {
+      return [
+        ...this.extractTerms(node.left, isSubtract),
+        ...this.extractTerms(node.right, !isSubtract),
+      ];
+    }
+    const { coeff, body } = this.extractFactors(node);
+    return [{ coeff: isSubtract ? negate(coeff) : coeff, body }];
+  }
+
+  private tryAddSubtractSymbolic(
+    left: DefinedNode,
+    right: DefinedNode,
+    op: "ADD" | "SUBTRACT",
+  ): TreeNode | null {
+    const rawTerms = [
+      ...this.extractTerms(left, false),
+      ...this.extractTerms(right, op === "SUBTRACT"),
+    ];
+
+    const terms: Term[] = [];
+    let changed = false;
+
+    for (const term of rawTerms) {
+      const existing = terms.find((t) => isEqual(t.body, term.body));
+      if (existing) {
+        existing.coeff = this.evaluateNumericBinary(
+          existing.coeff,
+          term.coeff,
+          "ADD",
+        );
+        changed = true;
+      } else {
+        terms.push(term);
+      }
+    }
+
+    if (!changed) return null;
+
+    return this.buildSum(terms.filter((t) => !isZero(t.coeff)));
   }
 
   private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
@@ -289,6 +424,9 @@ export class Evaluator {
     if (node.type === "MULTIPLY") {
       const left = this.extractFactors(node.left);
       const right = this.extractFactors(node.right);
+      // Invariant: extractFactors is only called on simplified nodes, and
+      // tryMultiplySymbolic always merges pairs where both sides have a non-1
+      // coeff. Thus at most one side can have a non-1 coeff here.
       const coeff = isOne(left.coeff) ? right.coeff : left.coeff;
       const body = isOne(left.body)
         ? right.body
@@ -353,9 +491,7 @@ export class Evaluator {
         const b = this.unpackBase(rightFactor);
         if (!isEqual(a.base, b.base)) continue;
 
-        const bExp = isDivide
-          ? this.evaluateNumericBinary(Evaluator.ZERO, b.exp, "SUBTRACT")
-          : b.exp;
+        const bExp = isDivide ? negate(b.exp) : b.exp;
 
         if (a.abs === b.abs) {
           const totalExp = this.evaluateNumericBinary(a.exp, bExp, "ADD");
@@ -416,9 +552,9 @@ export class Evaluator {
   ): TreeNode | null {
     if (left.type === "DIVIDE" || right.type === "DIVIDE") {
       const [n1, d1] =
-        left.type === "DIVIDE" ? [left.left, left.right] : [left, null];
+        left.type === "DIVIDE" ? [left.left, left.right] : [left];
       const [n2, d2] =
-        right.type === "DIVIDE" ? [right.left, right.right] : [right, null];
+        right.type === "DIVIDE" ? [right.left, right.right] : [right];
       const den = d1 && d2 ? new Multiply(d1, d2) : (d1 ?? d2)!;
       return this.simplify(new Divide(new Multiply(n1, n2), den));
     }
@@ -427,10 +563,15 @@ export class Evaluator {
     const t2 = this.extractFactors(right);
 
     if (t1.factors.length === 0 || t2.factors.length === 0) {
-      return this.makeTerm(
-        this.evaluateNumericMultiply(t1.coeff, t2.coeff),
-        isOne(t1.body) ? t2.body : t1.body,
-      );
+      const coeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
+      const body = isOne(t1.body) ? t2.body : t1.body;
+      if (
+        isNegativeOne(coeff) &&
+        (body.type === "ADD" || body.type === "SUBTRACT")
+      ) {
+        return this.buildSum(this.extractTerms(body, true));
+      }
+      return this.makeTerm(coeff, body);
     }
 
     const { factors, changed } = this.combineFactors(t1.factors, t2.factors);
@@ -460,20 +601,14 @@ export class Evaluator {
       if (!single) return null;
       const rightInfo = this.getBaseAndExp(single);
 
-      const totalExp = this.evaluateNumericBinary(
-        Evaluator.ZERO,
-        rightInfo.exp,
-        "SUBTRACT",
-      );
-
       return this.withCoeff(
         this.evaluateNumericDivide(num.coeff, den.coeff),
-        this.simplify(new Power(rightInfo.base, totalExp)),
+        this.simplify(new Power(rightInfo.base, negate(rightInfo.exp))),
       );
     }
 
     if (den.factors.length === 0) {
-      return this.makeTerm(
+      return this.withCoeff(
         this.evaluateNumericDivide(num.coeff, den.coeff),
         num.body,
       );

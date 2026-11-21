@@ -92,5 +92,8 @@ describe(".print() and .toString()", () => {
     testPrint("fn(1 + 1, fn(-pi))", { functions }).toMatchInlineSnapshot(
       `"fn(1 + 1, fn(-pi))"`,
     );
+    testPrint("2fn(1)", { functions }).toMatchInlineSnapshot(`"2fn(1)"`);
+    testPrint("-fn(1)", { functions }).toMatchInlineSnapshot(`"-fn(1)"`);
+    testPrint("-2fn(1)", { functions }).toMatchInlineSnapshot(`"-2fn(1)"`);
   });
 });

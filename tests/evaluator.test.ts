@@ -447,9 +447,6 @@ describe("evaluate", () => {
       expect(simplify("e - 0").print()).toBe("e");
       expect(simplify("0 - e").print()).toBe("-e");
 
-      expect(simplify("pi - pi + e").print()).toBe("e");
-      expect(simplify("e - e + pi").print()).toBe("pi");
-
       expect(simplify("pi + e").print()).toBe("pi + e");
       expect(simplify("e + pi").print()).toBe("e + pi");
       expect(simplify("pi - e").print()).toBe("pi - e");
@@ -462,6 +459,23 @@ describe("evaluate", () => {
       expect(simplify("2 + pi").print()).toBe("2 + pi");
       expect(simplify("2 - e").print()).toBe("2 - e");
       expect(simplify("2 - pi").print()).toBe("2 - pi");
+
+      expect(simplify("pi - pi + e").print()).toBe("e");
+      expect(simplify("e - e + pi").print()).toBe("pi");
+
+      expect(simplify("e + (pi - pi)").print()).toBe("e");
+      expect(simplify("pi + (e - e)").print()).toBe("pi");
+
+      expect(simplify("e + pi - pi").print()).toBe("e");
+      expect(simplify("e - pi + pi").print()).toBe("e");
+      expect(simplify("(e - pi) - (e - pi)").print()).toBe("0");
+
+      expect(simplify("e + pi + e").print()).toBe("2e + pi");
+      expect(simplify("e - pi + e").print()).toBe("2e - pi");
+
+      expect(simplify("2 + pi + 3").print()).toBe("5 + pi");
+      expect(simplify("1/2 + pi + 0.5").print()).toBe("1 + pi");
+      expect(simplify("2 + pi - 3").print()).toBe("-1 + pi");
 
       expect(simplify("0pi + e").print()).toBe("e");
       expect(simplify("0e + pi").print()).toBe("pi");
@@ -503,9 +517,11 @@ describe("evaluate", () => {
       expect(simplify("e * pi - e * pi").print()).toBe("0");
       expect(simplify("e * pi - pi * e").print()).toBe("0");
 
-      expect(simplify("(2 * (x + 1)) * (3 * x)").print()).toBe(
-        "6 * ((x + 1) * x)",
+      expect(simplify("(2 * (pi + 1)) * 3pi").print()).toBe(
+        "6 * ((pi + 1) * pi)",
       );
+
+      expect(simplify("-(-pi - 1)").print()).toBe("pi + 1");
     });
 
     it("handles combination of exponentiation, addition and subtraction of constants", () => {
@@ -655,6 +671,15 @@ describe("evaluate", () => {
       expect(simplify("e^2 / pi").print()).toBe("e^2 / pi");
       expect(simplify("e * (e / pi)").print()).toBe("e^2 / pi");
       expect(simplify("pi(2pi / pi^2)").print()).toBe("2");
+
+      expect(simplify("(-pi - 1) / -1").print()).toBe("pi + 1");
+
+      expect(simplify("(e + pi) / (e + pi)").print()).toBe("1");
+      expect(simplify("(pi + 1) / (pi + 1)").print()).toBe("1");
+      expect(simplify("(pi + 1.5) / (pi + 1.5)").print()).toBe("1");
+      expect(simplify("(pi + 1/2) / (pi + 1/2)").print()).toBe("1");
+
+      expect(simplify("(1 + pi + e) / (pi + e + 1)").print()).toBe("1");
     });
 
     it("handles exponentiation of constants", () => {
@@ -726,6 +751,7 @@ describe("evaluate", () => {
       expect(simplify("abs(-1/2)").print()).toBe("1/2");
 
       expect(simplify("abs(pi)").print()).toBe("pi");
+      expect(simplify("abs(-pi)").print()).toBe("pi");
       expect(simplify("abs(pi^2)").print()).toBe("pi^2");
       expect(simplify("abs(pi)^2").print()).toBe("pi^2");
       expect(simplify("abs(e^pi)").print()).toBe("e^pi");
@@ -733,6 +759,7 @@ describe("evaluate", () => {
       expect(simplify("abs(pi) * abs(pi)").print()).toBe("pi^2");
 
       expect(simplify("abs(x)").print()).toBe("abs(x)");
+      expect(simplify("abs(-x)").print()).toBe("abs(x)");
       expect(simplify("abs(x^2)").print()).toBe("x^2");
       expect(simplify("abs(2^x)").print()).toBe("2^x");
       expect(simplify("abs(e^x)").print()).toBe("e^x");
@@ -745,12 +772,61 @@ describe("evaluate", () => {
       expect(simplify("(abs(x^3))^2").print()).toBe("x^6");
       expect(simplify("abs(abs(x))").print()).toBe("abs(x)");
       expect(simplify("abs(-abs(x))").print()).toBe("abs(x)");
-      expect(simplify("abs(2x)").print()).toBe("2 * abs(x)");
+      expect(simplify("abs(2x)").print()).toBe("2abs(x)");
       expect(simplify("x^2 / abs(x)").print()).toBe("abs(x)");
       expect(simplify("x^3 / abs(x)").print()).toBe("x * abs(x)");
+
+      const negativeXoptions = {
+        functions,
+        constants: new Map([["x", "negative" as const]]),
+      };
+      expect(simplify("abs(x)", negativeXoptions).print()).toBe("-x");
+      expect(simplify("abs(-x)", negativeXoptions).print()).toBe("-x");
     });
 
-    it("handles custom functions", () => {
+    it("handles floor and functions", () => {
+      expect(simplify("floor(1)").print()).toBe("1");
+      expect(simplify("ceil(1)").print()).toBe("1");
+
+      expect(simplify("floor(1.5)").print()).toBe("1");
+      expect(simplify("ceil(1.5)").print()).toBe("2");
+      expect(simplify("floor(1.2e2)").print()).toBe("120");
+      expect(simplify("ceil(1.2e2)").print()).toBe("120");
+
+      expect(simplify("floor(-1.5)").print()).toBe("-2");
+      expect(simplify("ceil(-1.5)").print()).toBe("-1");
+      expect(simplify("floor(-1.2e2)").print()).toBe("-120");
+      expect(simplify("ceil(-1.2e2)").print()).toBe("-120");
+
+      expect(simplify("floor(3/2)").print()).toBe("1");
+      expect(simplify("ceil(3/2)").print()).toBe("2");
+
+      expect(simplify("floor(-3/2)").print()).toBe("-2");
+      expect(simplify("ceil(-3/2)").print()).toBe("-1");
+
+      expect(simplify("floor(floor(x))").print()).toBe("floor(x)");
+      expect(simplify("ceil(ceil(x))").print()).toBe("ceil(x)");
+
+      expect(simplify("ceil(floor(x))").print()).toBe("floor(x)");
+      expect(simplify("floor(ceil(x))").print()).toBe("ceil(x)");
+
+      expect(simplify("floor(floor(x) + floor(x))").print()).toBe("2floor(x)");
+      expect(simplify("ceil(ceil(x) + ceil(x))").print()).toBe("2ceil(x)");
+
+      expect(simplify("ceil(floor(x)^2)").print()).toBe("floor(x)^2");
+      expect(simplify("floor(ceil(x)^2)").print()).toBe("ceil(x)^2");
+
+      expect(simplify("floor(x + 1)").print()).toBe("floor(x) + 1");
+      expect(simplify("ceil(x + 1)").print()).toBe("ceil(x) + 1");
+
+      expect(simplify("floor(x + floor(x))").print()).toBe("2floor(x)");
+      expect(simplify("ceil(x + ceil(x))").print()).toBe("2ceil(x)");
+
+      expect(simplify("floor(x + ceil(x))").print()).toBe("floor(x) + ceil(x)");
+      expect(simplify("ceil(x + floor(x))").print()).toBe("ceil(x) + floor(x)");
+    });
+
+    it("handles functions", () => {
       const functions = new Set(["fn"]);
       expect(simplify("fn(1 + 1)", { functions }).print()).toBe("fn(2)");
       expect(simplify("fn(2 * 2, 5-3)", { functions }).print()).toBe(
@@ -791,7 +867,7 @@ describe("evaluate", () => {
       expect(simplify("abs(e^z)", options).print()).toBe("abs(e^z)");
       expect(simplify("abs(abs(z))", options).print()).toBe("abs(z)");
       expect(simplify("abs(-abs(z))", options).print()).toBe("abs(z)");
-      expect(simplify("abs(2z)", options).print()).toBe("2 * abs(z)");
+      expect(simplify("abs(2z)", options).print()).toBe("2abs(z)");
       expect(simplify("z^2 / abs(z)", options).print()).toBe("z^2 / abs(z)");
       expect(simplify("z^3 / abs(z)", options).print()).toBe("z^3 / abs(z)");
     });
