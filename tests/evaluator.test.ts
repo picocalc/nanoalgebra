@@ -335,11 +335,21 @@ describe("evaluate", () => {
       expect(printNode(simplify("(2 * 2^0.5) ^ (-2)^2"))).toBe("64");
     });
 
-    it.failing("handles exponentiation to a fractional power", () => {
+    it("handles exponentiation to a fractional power", () => {
       expect(printNode(simplify("4^(1/2)"))).toBe("2");
       expect(printNode(simplify("4^0.5"))).toBe("2");
+
       expect(printNode(simplify("(4pi^2)^(1/2)"))).toBe("2pi");
       expect(printNode(simplify("(4pi^2)^0.5"))).toBe("2pi");
+
+      expect(printNode(simplify("sqrt(0)"))).toBe("0");
+      expect(printNode(simplify("sqrt(1)"))).toBe("1");
+      expect(printNode(simplify("sqrt(16)"))).toBe("4");
+
+      expect(printNode(simplify("8^(1/3)"))).toBe("2");
+      expect(printNode(simplify("8^(2/3)"))).toBe("4");
+
+      expect(printNode(simplify("sqrt(24) * sqrt(6)"))).toBe("12");
     });
 
     it("handles exponentiation of negatives to a fractional power", () => {
@@ -825,6 +835,13 @@ describe("evaluate", () => {
       expect(printNode(simplify("i^-2", options))).toBe("-1");
       expect(printNode(simplify("i^-3", options))).toBe("i");
       expect(printNode(simplify("i^-4", options))).toBe("1");
+
+      expect(printNode(simplify("(2i)^2", options))).toBe("-4");
+      expect(printNode(simplify("(2i)^3", options))).toBe("-8i");
+      expect(printNode(simplify("(2i)^4", options))).toBe("16");
+
+      expect(printNode(simplify("(-i)^2", options))).toBe("-1");
+      expect(printNode(simplify("(-i)^3", options))).toBe("i");
     });
 
     it("handles fractional exponents in complex domain", () => {
@@ -843,6 +860,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(z)^2", options))).toBe("z");
       expect(printNode(simplify("sqrt(z^2)", options))).toBe("(z^2)^(1/2)");
       expect(printNode(simplify("sqrt(z^4)", options))).toBe("(z^4)^(1/2)");
+
+      expect(printNode(simplify("sqrt(-1)", options))).toBe("i");
+      expect(printNode(simplify("sqrt(-16)", options))).toBe("4i");
     });
 
     it("handles abs function in complex domain", () => {

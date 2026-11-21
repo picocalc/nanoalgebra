@@ -1,3 +1,4 @@
+import { iNthRoot } from "#math/iroot";
 import { lcm } from "#math/lcm";
 import { mergeMapWithDefaults } from "#utils/merge";
 
@@ -6,7 +7,6 @@ import type {
   BinaryOpType,
   DefinedNode,
   NumericalNode,
-  SymbolNode,
   TreeNode,
 } from "./nodes";
 import {
@@ -20,6 +20,7 @@ import {
   Multiply,
   Power,
   Subtract,
+  SymbolNode,
   Undefined,
 } from "./nodes";
 import {
@@ -179,10 +180,11 @@ export class Evaluator {
         ) {
           return new Undefined(simplified);
         }
-        const expInt = tryGetIntegerValue(right);
-        if (expInt && isNumerical(left) && isNumerical(right)) {
-          return this.evaluatePower(left, expInt);
+        if (isNumerical(left) && isNumerical(right)) {
+          const evaluated = this.evaluateNumericPower(left, right);
+          if (evaluated) return evaluated;
         }
+        const expInt = tryGetIntegerValue(right);
         return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
       }
     }
@@ -507,51 +509,70 @@ export class Evaluator {
       for (const [j, rightFactor] of rightFactors.entries()) {
         if (used[j]) continue;
         const b = this.unpackBase(rightFactor);
-        if (!isEqual(a.base, b.base)) continue;
 
-        const bExp = isDivide ? negate(b.exp) : b.exp;
+        if (isEqual(a.base, b.base)) {
+          const bExp = isDivide ? negate(b.exp) : b.exp;
 
-        if (a.abs === b.abs) {
-          const totalExp = this.evaluateNumericBinary(a.exp, bExp, "ADD");
+          if (a.abs === b.abs) {
+            const totalExp = this.evaluateNumericBinary(a.exp, bExp, "ADD");
+            used[j] = true;
+            if (!a.abs && this.losesEvenRoot(a.base, totalExp, a.exp, b.exp)) {
+              const f1 = Evaluator.toFraction(a.exp);
+              const f2 = Evaluator.toFraction(b.exp);
+              const fTotal = Evaluator.toFraction(totalExp);
+              const rootDenom = lcm(f1.denominator, f2.denominator);
+              const outerExp =
+                (fTotal.numerator * rootDenom) / fTotal.denominator;
+              const rootNode = this.simplify(
+                new Power(a.base, new Fraction(1n, rootDenom)),
+              );
+              factors.push(new Power(rootNode, new Integer(outerExp)));
+            } else if (!isZero(totalExp)) {
+              factors.push(this.packBase(a.base, totalExp, a.abs));
+            }
+            changed = matched = true;
+            break;
+          }
+
+          const [uExp, absExp] = a.abs ? [bExp, a.exp] : [a.exp, bExp];
+          const n = tryGetIntegerValue(uExp);
+          const rem = n !== null ? n % 2n : 0n;
+          const even = n !== null ? n - rem : 0n;
+          if (even === 0n) continue;
+
           used[j] = true;
-          if (!a.abs && this.losesEvenRoot(a.base, totalExp, a.exp, b.exp)) {
-            const f1 = Evaluator.toFraction(a.exp);
-            const f2 = Evaluator.toFraction(b.exp);
-            const fTotal = Evaluator.toFraction(totalExp);
-            const rootDenom = lcm(f1.denominator, f2.denominator);
-            const outerExp =
-              (fTotal.numerator * rootDenom) / fTotal.denominator;
-            const rootNode = this.simplify(
-              new Power(a.base, new Fraction(1n, rootDenom)),
-            );
-            factors.push(new Power(rootNode, new Integer(outerExp)));
-          } else if (!isZero(totalExp)) {
-            factors.push(this.packBase(a.base, totalExp, a.abs));
+          const totalAbs = this.evaluateNumericBinary(
+            new Integer(even),
+            absExp,
+            "ADD",
+          );
+          if (rem !== 0n) {
+            factors.push(this.packBase(a.base, new Integer(rem), false));
+          }
+          if (!isZero(totalAbs)) {
+            factors.push(this.packBase(a.base, totalAbs, true));
           }
           changed = matched = true;
           break;
+        } else if (
+          !a.abs &&
+          !b.abs &&
+          isNumerical(a.base) &&
+          isNumerical(b.base) &&
+          !isInteger(a.exp) &&
+          isEqual(a.exp, b.exp) &&
+          !(isDivide && isZero(b.base)) &&
+          ((!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
+            (!this.complex && !this.isEvenRoot(a.exp)))
+        ) {
+          used[j] = true;
+          const combinedBase = isDivide
+            ? this.evaluateNumericDivide(a.base, b.base)
+            : this.evaluateNumericMultiply(a.base, b.base);
+          factors.push(this.simplify(new Power(combinedBase, a.exp)));
+          changed = matched = true;
+          break;
         }
-
-        const [uExp, absExp] = a.abs ? [bExp, a.exp] : [a.exp, bExp];
-        const n = tryGetIntegerValue(uExp);
-        const rem = n !== null ? n % 2n : 0n;
-        const even = n !== null ? n - rem : 0n;
-        if (even === 0n) continue;
-
-        used[j] = true;
-        const totalAbs = this.evaluateNumericBinary(
-          new Integer(even),
-          absExp,
-          "ADD",
-        );
-        if (rem !== 0n) {
-          factors.push(this.packBase(a.base, new Integer(rem), false));
-        }
-        if (!isZero(totalAbs)) {
-          factors.push(this.packBase(a.base, totalAbs, true));
-        }
-        changed = matched = true;
-        break;
       }
 
       if (!matched) factors.push(leftFactor);
@@ -677,14 +698,50 @@ export class Evaluator {
       return this.simplify(new Power(innerBase, newExp));
     }
 
-    if (left.type === "MULTIPLY" && expInt) {
+    if (left.type === "MULTIPLY" && isNumerical(right)) {
       const { coeff, factors } = this.extractFactors(left);
-      const single = this.singleFactor(factors);
-      if (!isOne(coeff) && single) {
-        return this.withCoeff(
-          this.evaluatePower(coeff, expInt),
-          this.simplify(new Power(single, right)),
-        );
+      const isUnrestricted =
+        expInt !== null || (!this.complex && !this.isEvenRoot(right));
+
+      const allFactors = isOne(coeff) ? factors : [coeff, ...factors];
+      const splittable: TreeNode[] = [];
+      const remaining: TreeNode[] = [];
+
+      for (const factor of allFactors) {
+        const canSplit =
+          isUnrestricted ||
+          (isNumerical(factor)
+            ? !isNegativeNumber(factor) && !isZero(factor)
+            : this.isPositive(factor));
+        if (canSplit) {
+          splittable.push(factor);
+        } else {
+          remaining.push(factor);
+        }
+      }
+
+      // At most one non-positive factor can still be split safely (e.g. (4x)^(1/2) -> 2x^(1/2))
+      if (remaining.length === 1) {
+        splittable.push(remaining.pop()!);
+      }
+
+      if (splittable.length > 0) {
+        let simplifiedAny = expInt !== null;
+        const powered = splittable.map((f) => {
+          const raw = new Power(f, right);
+          const res = this.simplify(raw);
+          if (!isEqual(res, raw)) simplifiedAny = true;
+          return res;
+        });
+
+        if (simplifiedAny) {
+          if (remaining.length > 0) {
+            powered.push(
+              this.simplify(new Power(this.multiplyAll(remaining), right)),
+            );
+          }
+          return this.multiplyAll(powered);
+        }
       }
     }
 
@@ -782,6 +839,48 @@ export class Evaluator {
         return [((c1 % c2) + c2) % c2, exp];
       },
     );
+  }
+
+  private evaluateNumericPower(
+    left: NumericalNode,
+    right: NumericalNode,
+  ): TreeNode | null {
+    const expFrac = Evaluator.toFraction(right);
+    if (expFrac.denominator === 1n) {
+      return this.evaluatePower(left, expFrac.numerator);
+    }
+
+    const baseFrac = Evaluator.toFraction(left);
+    const isNegBase = baseFrac.numerator < 0n;
+    if (isNegBase && expFrac.denominator % 2n === 0n) {
+      if (!this.complex) return null;
+
+      if (expFrac.denominator === 2n) {
+        const mag = this.simplify(new Power(negate(left), right));
+        const rem = ((expFrac.numerator % 4n) + 4n) % 4n;
+        const signedMag = rem === 3n ? this.simplify(negate(mag)) : mag;
+        return this.withCoeff(signedMag, new SymbolNode("i"));
+      }
+
+      if (isNegativeOne(left)) return null;
+      const mag = this.simplify(new Power(negate(left), right));
+      return this.withCoeff(mag, new Power(new Integer(-1n), right));
+    }
+
+    const absNum = isNegBase ? -baseFrac.numerator : baseFrac.numerator;
+    const rootNum = iNthRoot(absNum, expFrac.denominator);
+    if (rootNum === null) return null;
+
+    const rootDen = iNthRoot(baseFrac.denominator, expFrac.denominator);
+    if (rootDen === null) return null;
+
+    const root = this.normalizeFraction(
+      isNegBase ? -rootNum : rootNum,
+      rootDen,
+    );
+    return expFrac.numerator === 1n
+      ? root
+      : this.evaluatePower(root, expFrac.numerator);
   }
 
   private evaluatePower(
