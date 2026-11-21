@@ -135,6 +135,26 @@ describe("evaluate", () => {
       expect(printNode(simplify("10."))).toBe("10");
     });
 
+    it("handles a decimal with leading 0s", () => {
+      expect(printNode(simplify("0.0"))).toBe("0");
+      expect(printNode(simplify("0.00"))).toBe("0");
+      expect(printNode(simplify("00.0"))).toBe("0");
+      expect(printNode(simplify("00.00"))).toBe("0");
+      expect(printNode(simplify("1.0"))).toBe("1");
+      expect(printNode(simplify("1.00"))).toBe("1");
+      expect(printNode(simplify("01.0"))).toBe("1");
+      expect(printNode(simplify("01.00"))).toBe("1");
+
+      expect(printNode(simplify("0e0"))).toBe("0");
+      expect(printNode(simplify("0e1"))).toBe("0");
+      expect(printNode(simplify("0e-1"))).toBe("0");
+      expect(printNode(simplify("0.0e0"))).toBe("0");
+      expect(printNode(simplify("0.0e1"))).toBe("0");
+      expect(printNode(simplify("0.0e-1"))).toBe("0");
+      expect(printNode(simplify("1e0"))).toBe("1");
+      expect(printNode(simplify("1.0e0"))).toBe("1");
+    });
+
     it("handles addition of 2 decimals", () => {
       expect(printNode(simplify("0.1 + 0.1"))).toBe("0.2");
       expect(printNode(simplify("0.1 + 0.2"))).toBe("0.3");

@@ -120,14 +120,13 @@ export class Parser {
     if (token.type === "NUMBER") {
       this.consume(token);
 
-      if (token.fraction || token.exponent) {
-        const wholePart = token.whole === "" ? "0" : token.whole;
-        const fracPart = token.fraction ?? "";
-        const coeff = BigInt(wholePart + fracPart);
+      const frac = token.fraction?.replace(/0+$/, "") ?? "";
 
+      if (frac.length || token.exponent) {
+        const coeff = BigInt(token.whole + frac);
         if (coeff === 0n) return ZERO;
 
-        let exp = -BigInt(fracPart.length);
+        let exp = -BigInt(frac.length);
         if (token.exponent) {
           exp += BigInt(token.exponent);
         }
