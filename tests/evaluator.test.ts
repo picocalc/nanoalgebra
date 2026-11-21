@@ -400,6 +400,10 @@ describe("evaluate", () => {
       expect(printNode(simplify("(-8/27)^(1/3)"))).toBe("-2/3");
     });
 
+    it("handles exponentiation of decimals to a fractional power", () => {
+      expect(printNode(simplify("sqrt(0.25)"))).toBe("1/2");
+    });
+
     it("handles exponentiation of negatives to a fractional power", () => {
       expectUndefined("sqrt(-1)").toMatchInlineSnapshot(`"(-1)^(1/2)"`);
       expectUndefined("sqrt(-1) * sqrt(-1)").toMatchInlineSnapshot(
