@@ -1,7 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import { constants, Evaluator } from "#lib/evaluator";
-import { functions } from "#lib/parser";
+import { Evaluator } from "#lib/evaluator";
 import { printNode } from "#lib/printer";
 import { simplify } from "#src";
 
@@ -780,7 +779,6 @@ describe("evaluate", () => {
       expect(printNode(simplify("x^3 / abs(x)"))).toBe("x * abs(x)");
 
       const negativeXoptions = {
-        functions,
         constants: new Map([["x", "negative" as const]]),
       };
       expect(printNode(simplify("abs(x)", negativeXoptions))).toBe("-x");
@@ -845,9 +843,9 @@ describe("evaluate", () => {
   });
 
   describe("complex domain", () => {
-    const options = { complex: true, constants, functions };
+    const options = { complex: true };
 
-    it("i", () => {
+    it("handles i", () => {
       expect(printNode(simplify("i", options))).toBe("i");
 
       expectUndefined("i").toMatchInlineSnapshot(`"i"`);

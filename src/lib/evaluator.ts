@@ -1,4 +1,5 @@
 import { lcm } from "#math/lcm";
+import { mergeMapWithDefaults } from "#utils/merge";
 
 import { AlgebraError } from "./errors";
 import type {
@@ -64,7 +65,13 @@ export class Evaluator {
   private static readonly ZERO = new Integer(0);
   private static readonly ONE = new Integer(1);
 
-  constructor(readonly options: Readonly<EvaluatorOptions> = { constants }) {}
+  private readonly constants: ReadonlyMap<string, SymbolDomain>;
+  private readonly complex: boolean;
+
+  constructor(options: Readonly<EvaluatorOptions> = {}) {
+    this.complex = options.complex ?? false;
+    this.constants = mergeMapWithDefaults(constants, options.constants);
+  }
 
   public simplify(node: TreeNode): TreeNode {
     switch (node.type) {
@@ -75,7 +82,7 @@ export class Evaluator {
         return node;
 
       case "SYMBOL": {
-        if (this.symbolDomain(node) === "complex" && !this.options.complex) {
+        if (this.symbolDomain(node) === "complex" && !this.complex) {
           return new Undefined(node);
         }
         return node;
@@ -173,7 +180,7 @@ export class Evaluator {
           return isNegativeNumber(right) ? new Undefined(simplified) : left;
         }
         if (
-          !this.options.complex &&
+          !this.complex &&
           this.isEvenRoot(right) &&
           (isNegativeNumber(left) || this.symbolDomain(left) === "negative")
         ) {
@@ -285,13 +292,11 @@ export class Evaluator {
   }
 
   private symbolDomain(node: TreeNode): SymbolDomain | undefined {
-    return node.type === "SYMBOL"
-      ? this.options.constants?.get(node.name)
-      : undefined;
+    return node.type === "SYMBOL" ? this.constants.get(node.name) : undefined;
   }
 
   private isReal(node: TreeNode): boolean {
-    if (!this.options.complex || isNumerical(node)) return true;
+    if (!this.complex || isNumerical(node)) return true;
     const domain = this.symbolDomain(node);
     return domain === "positive" || domain === "negative" || domain === "real";
   }
@@ -358,7 +363,7 @@ export class Evaluator {
     exp2?: TreeNode,
   ): boolean {
     return (
-      !this.options.complex &&
+      !this.complex &&
       !this.isPositive(base) &&
       (this.isEvenRoot(exp1) ||
         (exp2 !== undefined && this.isEvenRoot(exp2))) &&
@@ -664,13 +669,13 @@ export class Evaluator {
 
       if (isOne(newExp) && isEvenInteger(innerExp) && this.isEvenRoot(right)) {
         if (this.isPositive(innerBase)) return innerBase;
-        return this.options.complex
+        return this.complex
           ? null
           : this.simplify(new FunctionCall("abs", [innerBase]));
       }
 
       if (
-        (this.options.complex && !this.isPositive(innerBase) && !expInt) ||
+        (this.complex && !this.isPositive(innerBase) && !expInt) ||
         this.losesEvenRoot(innerBase, newExp, innerExp)
       ) {
         return null;
