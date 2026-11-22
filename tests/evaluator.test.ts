@@ -547,7 +547,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("e * pi - pi * e"))).toBe("0");
 
       expect(printNode(simplify("(2 * (pi + 1)) * 3pi"))).toBe(
-        "6 * ((pi + 1) * pi)",
+        "6 * (pi + 1) * pi",
       );
 
       expect(printNode(simplify("-(-pi - 1)"))).toBe("pi + 1");
@@ -581,7 +581,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("2pi * 3"))).toBe("6pi");
       expect(printNode(simplify("2 * 3pi"))).toBe("6pi");
 
-      expect(printNode(simplify("2e * 3pi"))).toBe("6 * (e * pi)");
+      expect(printNode(simplify("2e * 3pi"))).toBe("6e * pi");
 
       expect(printNode(simplify("e * pi * e"))).toBe("e^2 * pi");
       expect(printNode(simplify("e * (e * pi)"))).toBe("e^2 * pi");
@@ -628,6 +628,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("(2pi)^3"))).toBe("8pi^3");
       expect(printNode(simplify("(pi*2)^3"))).toBe("8pi^3");
       expect(printNode(simplify("(2pi^-1)^-1"))).toBe("pi/2");
+      expect(printNode(simplify("2pi * 2^(-1/2)"))).toBe("2^(1/2) * pi");
     });
 
     it("handles division of constants", () => {
@@ -783,6 +784,8 @@ describe("evaluate", () => {
 
       expect(printNode(simplify("sqrt(2) * sqrt(2)"))).toBe("2");
       expect(printNode(simplify("sqrt(2)^2"))).toBe("2");
+      expect(printNode(simplify("sqrt(2)"))).toBe("2^(1/2)");
+      expect(printNode(simplify("2 / sqrt(2)"))).toBe("2^(1/2)");
 
       expect(printNode(simplify("sqrt(x)"))).toBe("x^(1/2)");
       expect(printNode(simplify("sqrt(x^2)"))).toBe("abs(x)");

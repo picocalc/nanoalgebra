@@ -562,14 +562,13 @@ export class Evaluator {
           changed = matched = true;
           break;
         } else if (
-          !a.abs &&
-          !b.abs &&
           isNumerical(a.base) &&
           isNumerical(b.base) &&
-          !isInteger(a.exp) &&
+          (!isInteger(a.exp) || isOne(a.exp)) &&
           isEqual(a.exp, b.exp) &&
           !(isDivide && isZero(b.base)) &&
-          ((!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
+          (isOne(a.exp) ||
+            (!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
             (!this.complex && isNumerical(a.exp) && !this.isEvenRoot(a.exp)))
         ) {
           used[j] = true;
@@ -608,25 +607,23 @@ export class Evaluator {
     const t1 = this.extractFactors(left);
     const t2 = this.extractFactors(right);
 
-    if (t1.factors.length === 0 || t2.factors.length === 0) {
-      const coeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
-      const body = isOne(t1.body) ? t2.body : t1.body;
-      if (
-        isNegativeOne(coeff) &&
-        (body.type === "ADD" || body.type === "SUBTRACT")
-      ) {
-        return this.buildSum(this.extractTerms(body, true));
-      }
-      return this.makeTerm(coeff, body);
-    }
-
-    const { factors, changed } = this.combineFactors(t1.factors, t2.factors);
-    if (!changed && (isOne(t1.coeff) || isOne(t2.coeff))) return null;
-
-    return this.withCoeff(
-      this.evaluateNumericMultiply(t1.coeff, t2.coeff),
-      this.multiplyAll(factors),
+    const { factors, changed } = this.combineFactors(
+      isOne(t1.coeff) ? t1.factors : [t1.coeff, ...t1.factors],
+      isOne(t2.coeff) ? t2.factors : [t2.coeff, ...t2.factors],
     );
+    if (changed) return this.multiplyAll(factors);
+
+    if (t1.factors.length !== 0 && t2.factors.length !== 0) return null;
+
+    const coeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
+    const body = isOne(t1.body) ? t2.body : t1.body;
+    if (
+      isNegativeOne(coeff) &&
+      (body.type === "ADD" || body.type === "SUBTRACT")
+    ) {
+      return this.buildSum(this.extractTerms(body, true));
+    }
+    return this.makeTerm(coeff, body);
   }
 
   private tryDivideSymbolic(
