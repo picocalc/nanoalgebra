@@ -918,6 +918,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("ceil(abs(ceil(x)))"))).toBe("abs(ceil(x))");
       expect(printNode(simplify("floor(abs(ceil(x)))"))).toBe("abs(ceil(x))");
 
+      expect(printNode(simplify("abs(floor(abs(x)))"))).toBe("floor(abs(x))");
+      expect(printNode(simplify("abs(ceil(abs(x)))"))).toBe("ceil(abs(x))");
+
       expect(printNode(simplify("floor(2^abs(floor(x)))"))).toBe(
         "2^abs(floor(x))",
       );

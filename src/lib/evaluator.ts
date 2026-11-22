@@ -304,7 +304,12 @@ export class Evaluator {
   private isPositive(node: TreeNode): boolean {
     if (isNumerical(node)) return !isNegativeNumber(node) && !isZero(node);
     if (this.symbolDomain(node) === "positive") return true;
-    if (node.type === "FUNCTION" && node.name === "abs") return true;
+    if (node.type === "FUNCTION") {
+      if (node.name === "abs") return true;
+      if (node.name === "floor" || node.name === "ceil") {
+        return this.isPositive(node.args[0]);
+      }
+    }
     if (node.type === "POWER") {
       if (
         this.isReal(node.left) &&
