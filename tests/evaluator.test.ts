@@ -859,6 +859,7 @@ describe("evaluate", () => {
 
     it("handles sqrt function with abs function", () => {
       expect(printNode(simplify("abs(sqrt(x))"))).toBe("x^(1/2)");
+      expect(printNode(simplify("abs(sqrt(-x))"))).toBe("(-x)^(1/2)");
     });
 
     it("handles floor and ceil functions", () => {
