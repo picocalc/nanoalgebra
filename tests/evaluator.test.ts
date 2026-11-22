@@ -767,6 +767,11 @@ describe("evaluate", () => {
   });
 
   describe("variables", () => {
+    it("handles exponentiation", () => {
+      expect(printNode(simplify("(-x)^2"))).toBe("x^2");
+      expect(printNode(simplify("(-x)^3"))).toBe("-x^3");
+    });
+
     it("handles fractional exponents", () => {
       expect(printNode(simplify("(x^2)^(1/2)"))).toBe("abs(x)");
       expect(printNode(simplify("(x^3)^(1/3)"))).toBe("x");
@@ -805,6 +810,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(x^2)"))).toBe("abs(x)");
       expect(printNode(simplify("sqrt(x^4)"))).toBe("x^2");
       expect(printNode(simplify("sqrt(x)^2"))).toBe("(x^(1/2))^2");
+      expect(printNode(simplify("sqrt(sqrt(x)^2)"))).toBe("x^(1/2)");
       expect(printNode(simplify("sqrt(x)^-1"))).toBe("x^(-1/2)");
       expect(printNode(simplify("sqrt(x) * sqrt(x)^3"))).toBe("(x^(1/2))^4");
       expect(printNode(simplify("sqrt(x) / sqrt(x)^-1"))).toBe("(x^(1/2))^2");
@@ -969,6 +975,11 @@ describe("evaluate", () => {
       expect(printNode(simplify("(-i)^3", options))).toBe("i");
     });
 
+    it("handles exponentiation in complex domain", () => {
+      expect(printNode(simplify("(-z)^2"))).toBe("z^2");
+      expect(printNode(simplify("(-z)^3"))).toBe("-z^3");
+    });
+
     it("handles fractional exponents in complex domain", () => {
       expect(printNode(simplify("(z^(1/2))^2", options))).toBe("z");
       expect(printNode(simplify("(z^2)^(1/2)", options))).toBe("(z^2)^(1/2)");
@@ -988,6 +999,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(pi^2)", options))).toBe("pi");
 
       expect(printNode(simplify("sqrt(z)^2", options))).toBe("z");
+      expect(printNode(simplify("sqrt(sqrt(z)^2)"))).toBe("z^(1/2)");
       expect(printNode(simplify("sqrt(z^2)", options))).toBe("(z^2)^(1/2)");
       expect(printNode(simplify("sqrt(z^4)", options))).toBe("(z^4)^(1/2)");
 
@@ -1045,8 +1057,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(3 + 4i)", options))).not.toBe("7");
     });
 
-    it("handles sqrt function with abs function", () => {
-      expect(printNode(simplify("abs(sqrt(x))", options))).not.toBe("x^(1/2)");
+    it("handles sqrt function with abs function in complex domain", () => {
+      expect(printNode(simplify("abs(sqrt(z))", options))).not.toBe("z^(1/2)");
       expect(
         printNode(
           simplify("abs(sqrt(x))", {
