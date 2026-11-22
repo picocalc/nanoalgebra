@@ -307,7 +307,11 @@ export class Evaluator {
     if (this.symbolDomain(node) === "positive") return true;
     if (node.type === "FUNCTION" && node.name === "abs") return true;
     if (node.type === "POWER") {
-      if (isEvenInteger(node.right) && this.isReal(node.left)) {
+      if (
+        this.isReal(node.left) &&
+        (isEvenInteger(node.right) ||
+          (this.isEvenRoot(node.right) && !this.isNegative(node.left)))
+      ) {
         return true;
       }
       return this.isPositive(node.left) && this.isReal(node.right);

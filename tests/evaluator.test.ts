@@ -1,13 +1,18 @@
 import { describe, it, expect } from "bun:test";
 
+import type { EvaluatorOptions } from "#lib/evaluator";
+import type { ParserOptions } from "#lib/parser";
 import { printNode } from "#lib/printer";
 import { simplify } from "#src";
 
-function expectUndefined(expression: string) {
-  const simplified = simplify(expression);
+function expectUndefined(
+  expression: string,
+  options?: ParserOptions & EvaluatorOptions,
+) {
+  const simplified = simplify(expression, options);
   expect(simplified.toString()).toBe("undefined");
   const printed = printNode(simplified);
-  const doubleSimplified = simplify(printed);
+  const doubleSimplified = simplify(printed, options);
   expect(doubleSimplified.toString()).toBe("undefined");
   expect(printNode(doubleSimplified)).toBe(printed);
   return expect(printed);
@@ -428,6 +433,9 @@ describe("evaluate", () => {
       expectUndefined("sqrt(sqrt(-1))").toMatchInlineSnapshot(
         `"sqrt((-1)^(1/2))"`,
       );
+      expectUndefined("sqrt(x)", {
+        constants: new Map([["x", "negative"]]),
+      }).toMatchInlineSnapshot(`"x^(1/2)"`);
     });
   });
 
@@ -841,7 +849,11 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(-x)", negativeXoptions))).toBe("-x");
     });
 
-    it("handles floor and functions", () => {
+    it("handles sqrt with abs functions", () => {
+      expect(printNode(simplify("abs(sqrt(x))"))).toBe("x^(1/2)");
+    });
+
+    it("handles floor and ceil functions", () => {
       expect(printNode(simplify("floor(1)"))).toBe("1");
       expect(printNode(simplify("ceil(1)"))).toBe("1");
 
@@ -1002,6 +1014,18 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(2i)", options))).toBe("2");
       expect(printNode(simplify("abs(-2i)", options))).toBe("2");
       expect(printNode(simplify("abs(3 + 4i)", options))).not.toBe("7");
+    });
+
+    it("handles sqrt with abs functions", () => {
+      expect(printNode(simplify("abs(sqrt(x))", options))).not.toBe("x^(1/2)");
+      expect(
+        printNode(
+          simplify("abs(sqrt(x))", {
+            complex: true,
+            constants: new Map([["x", "real"]]),
+          }),
+        ),
+      ).toBe("x^(1/2)");
     });
   });
 });
