@@ -33,7 +33,6 @@ import {
   isNumerical,
   isOne,
   isZero,
-  isInteger,
   tryGetIntegerValue,
   isNegativeOne,
 } from "./shared";
@@ -231,7 +230,7 @@ export class Evaluator {
   }
 
   private evaluateFloorCeil(node: TreeNode, op: "floor" | "ceil"): TreeNode {
-    if (isInteger(node)) {
+    if (this.isInteger(node)) {
       return node;
     }
     if (isNumerical(node)) {
@@ -243,7 +242,7 @@ export class Evaluator {
       const intTerms: Term[] = [];
 
       for (const term of terms) {
-        if (isInteger(term.coeff) && isInteger(term.body)) {
+        if (this.isInteger(term.coeff) && this.isInteger(term.body)) {
           intTerms.push(term);
         } else {
           nonIntTerms.push(term);
@@ -348,6 +347,35 @@ export class Evaluator {
       return (
         (this.isPositive(node.left) && this.isNegative(node.right)) ||
         (this.isNegative(node.left) && this.isPositive(node.right))
+      );
+    }
+    return false;
+  }
+
+  private isInteger(node: TreeNode): boolean {
+    if (node.type === "INTEGER") return true;
+    if (node.type === "DECIMAL") return node.exponent >= 0n;
+    if (
+      node.type === "FUNCTION" &&
+      node.args.length === 1 &&
+      (node.name === "floor" ||
+        node.name === "ceil" ||
+        (node.name === "abs" && this.isInteger(node.args[0])))
+    ) {
+      return true;
+    }
+    if (
+      node.type === "ADD" ||
+      node.type === "SUBTRACT" ||
+      node.type === "MULTIPLY"
+    ) {
+      return this.isInteger(node.left) && this.isInteger(node.right);
+    }
+    if (node.type === "POWER") {
+      return (
+        this.isInteger(node.left) &&
+        this.isInteger(node.right) &&
+        this.isPositive(node.right)
       );
     }
     return false;
@@ -582,7 +610,7 @@ export class Evaluator {
         } else if (
           isNumerical(a.base) &&
           isNumerical(b.base) &&
-          (!isInteger(a.exp) || isOne(a.exp)) &&
+          (!this.isInteger(a.exp) || isOne(a.exp)) &&
           isEqual(a.exp, b.exp) &&
           !(isDivide && isZero(b.base)) &&
           (isOne(a.exp) ||

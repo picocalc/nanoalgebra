@@ -849,6 +849,12 @@ describe("evaluate", () => {
       };
       expect(printNode(simplify("abs(x)", negativeXoptions))).toBe("-x");
       expect(printNode(simplify("abs(-x)", negativeXoptions))).toBe("-x");
+      expect(printNode(simplify("abs(pi - x)", negativeXoptions))).toBe(
+        "pi - x",
+      );
+      expect(printNode(simplify("abs(x - pi)", negativeXoptions))).toBe(
+        "-x + pi",
+      );
     });
 
     it("handles sqrt function with abs function", () => {
@@ -911,6 +917,10 @@ describe("evaluate", () => {
       expect(printNode(simplify("ceil(abs(floor(x)))"))).toBe("abs(floor(x))");
       expect(printNode(simplify("ceil(abs(ceil(x)))"))).toBe("abs(ceil(x))");
       expect(printNode(simplify("floor(abs(ceil(x)))"))).toBe("abs(ceil(x))");
+
+      expect(printNode(simplify("floor(2^abs(floor(x)))"))).toBe(
+        "2^abs(floor(x))",
+      );
     });
 
     it("handles functions", () => {

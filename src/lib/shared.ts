@@ -45,32 +45,6 @@ export function isEvenInteger(node: TreeNode): boolean {
   return !(!int || int % 2n);
 }
 
-export function isInteger(node: TreeNode): boolean {
-  if (node.type === "INTEGER") return true;
-  if (node.type === "DECIMAL") return node.exponent >= 0;
-  if (
-    node.type === "FUNCTION" &&
-    node.args.length === 1 &&
-    (node.name === "floor" ||
-      node.name === "ceil" ||
-      (node.name === "abs" && isInteger(node.args[0])))
-  ) {
-    return true;
-  }
-  if (
-    node.type === "ADD" ||
-    node.type === "SUBTRACT" ||
-    node.type === "MULTIPLY"
-  ) {
-    return isInteger(node.left) && isInteger(node.right);
-  }
-  if (node.type === "POWER") {
-    const exp = tryGetIntegerValue(node.right);
-    return exp !== null && exp >= 0n && isInteger(node.left);
-  }
-  return false;
-}
-
 function flattenOperands(
   node: TreeNode,
   type: "ADD" | "MULTIPLY",
