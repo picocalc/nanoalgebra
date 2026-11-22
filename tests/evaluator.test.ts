@@ -763,6 +763,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("(x^2)^(1/2)"))).toBe("abs(x)");
       expect(printNode(simplify("(x^3)^(1/3)"))).toBe("x");
       expect(printNode(simplify("(x^4)^(1/4)"))).toBe("abs(x)");
+      expect(printNode(simplify("(x^2)^(1/4)"))).toBe("abs(x)^(1/2)");
+      expect(printNode(simplify("(x^2)^(1/6)"))).toBe("abs(x)^(1/3)");
+      expect(printNode(simplify("(x^6)^(1/2)"))).toBe("abs(x)^3");
     });
 
     it("handles exponentiation with multiplications", () => {
@@ -968,6 +971,12 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(2z)", options))).toBe("2abs(z)");
       expect(printNode(simplify("z^2 / abs(z)", options))).toBe("z^2 / abs(z)");
       expect(printNode(simplify("z^3 / abs(z)", options))).toBe("z^3 / abs(z)");
+
+      expect(printNode(simplify("abs(i)", options))).toBe("1");
+      expect(printNode(simplify("abs(-i)", options))).toBe("1");
+      expect(printNode(simplify("abs(2i)", options))).toBe("2");
+      expect(printNode(simplify("abs(-2i)", options))).toBe("2");
+      expect(printNode(simplify("abs(3 + 4i)", options))).not.toBe("7");
     });
   });
 });

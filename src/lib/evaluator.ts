@@ -211,12 +211,20 @@ export class Evaluator {
 
   private evaluateAbs(node: TreeNode): TreeNode {
     if (isNumerical(node)) return isNegativeNumber(node) ? negate(node) : node;
+    if (node.type === "SYMBOL" && node.name === "i") return ONE;
     if (this.isPositive(node)) return node;
     if (this.isNegative(node)) return this.simplify(negate(node));
     if (node.type === "MULTIPLY") {
-      const { coeff, body } = this.extractFactors(node);
-      if (!isOne(coeff)) {
-        return this.withCoeff(this.evaluateAbs(coeff), this.evaluateAbs(body));
+      const { coeff, factors } = this.extractFactors(node);
+      const nonUnitFactors = factors.filter(
+        (f) => !(f.type === "SYMBOL" && f.name === "i"),
+      );
+      if (!isOne(coeff) || nonUnitFactors.length < factors.length) {
+        if (nonUnitFactors.length === 0) return this.evaluateAbs(coeff);
+        return this.withCoeff(
+          this.evaluateAbs(coeff),
+          this.evaluateAbs(this.multiplyAll(nonUnitFactors)),
+        );
       }
     }
     return new FunctionCall("abs", [node]);
@@ -679,11 +687,11 @@ export class Evaluator {
       const innerExp = left.right;
       const newExp = this.simplify(new Multiply(innerExp, right));
 
-      if (isOne(newExp) && isEvenInteger(innerExp) && this.isEvenRoot(right)) {
-        if (this.isPositive(innerBase)) return innerBase;
-        return this.complex
-          ? null
+      if (!this.complex && isEvenInteger(innerExp) && this.isEvenRoot(right)) {
+        const base = this.isPositive(innerBase)
+          ? innerBase
           : this.simplify(new FunctionCall("abs", [innerBase]));
+        return this.simplify(new Power(base, newExp));
       }
 
       if (
