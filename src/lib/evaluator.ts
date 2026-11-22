@@ -687,7 +687,11 @@ export class Evaluator {
       const innerExp = left.right;
       const newExp = this.simplify(new Multiply(innerExp, right));
 
-      if (!this.complex && isEvenInteger(innerExp) && this.isEvenRoot(right)) {
+      if (
+        this.isReal(innerBase) &&
+        isEvenInteger(innerExp) &&
+        this.isEvenRoot(right)
+      ) {
         const base = this.isPositive(innerBase)
           ? innerBase
           : this.simplify(new FunctionCall("abs", [innerBase]));

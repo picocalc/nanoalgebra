@@ -955,6 +955,31 @@ describe("evaluate", () => {
 
       expect(printNode(simplify("sqrt(-1)", options))).toBe("i");
       expect(printNode(simplify("sqrt(-16)", options))).toBe("4i");
+
+      expect(
+        printNode(
+          simplify("sqrt(x^2)", {
+            complex: true,
+            constants: new Map([["x", "real"]]),
+          }),
+        ),
+      ).toBe("abs(x)");
+      expect(
+        printNode(
+          simplify("sqrt(x^2)", {
+            complex: true,
+            constants: new Map([["x", "positive"]]),
+          }),
+        ),
+      ).toBe("x");
+      expect(
+        printNode(
+          simplify("sqrt(x^2)", {
+            complex: true,
+            constants: new Map([["x", "negative"]]),
+          }),
+        ),
+      ).toBe("-x");
     });
 
     it("handles abs function in complex domain", () => {
