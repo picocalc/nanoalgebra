@@ -489,6 +489,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("2 - e"))).toBe("2 - e");
       expect(printNode(simplify("2 - pi"))).toBe("2 - pi");
 
+      expect(printNode(simplify("pi - (-e)"))).toBe("pi + e");
+      expect(printNode(simplify("e - (-pi)"))).toBe("e + pi");
+
       expect(printNode(simplify("pi - pi + e"))).toBe("e");
       expect(printNode(simplify("e - e + pi"))).toBe("pi");
 

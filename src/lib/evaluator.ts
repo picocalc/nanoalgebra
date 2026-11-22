@@ -128,9 +128,7 @@ export class Evaluator {
           return node.type === "ADD" ? right : this.simplify(negate(right));
         }
         if (isZero(right)) return left;
-        return (
-          this.tryAddSubtractSymbolic(left, right, node.type) ?? simplified
-        );
+        return this.tryAddSubtractSymbolic(left, right, node.type);
       }
 
       case "MULTIPLY": {
@@ -385,14 +383,13 @@ export class Evaluator {
     left: DefinedNode,
     right: DefinedNode,
     op: "ADD" | "SUBTRACT",
-  ): TreeNode | null {
+  ): TreeNode {
     const rawTerms = [
       ...this.extractTerms(left, false),
       ...this.extractTerms(right, op === "SUBTRACT"),
     ];
 
     const terms: Term[] = [];
-    let changed = false;
 
     for (const term of rawTerms) {
       const existing = terms.find((t) => isEqual(t.body, term.body));
@@ -402,13 +399,10 @@ export class Evaluator {
           term.coeff,
           "ADD",
         );
-        changed = true;
       } else {
         terms.push(term);
       }
     }
-
-    if (!changed) return null;
 
     return this.buildSum(terms.filter((t) => !isZero(t.coeff)));
   }
