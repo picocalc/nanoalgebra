@@ -316,6 +316,12 @@ export class Evaluator {
       }
       return this.isPositive(node.left) && this.isReal(node.right);
     }
+    if (node.type === "ADD") {
+      return this.isPositive(node.left) && this.isPositive(node.right);
+    }
+    if (node.type === "SUBTRACT") {
+      return this.isPositive(node.left) && this.isNegative(node.right);
+    }
     if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
       return (
         (this.isPositive(node.left) && this.isPositive(node.right)) ||
@@ -331,6 +337,12 @@ export class Evaluator {
     if (node.type === "POWER") {
       const exp = tryGetIntegerValue(node.right);
       return exp !== null && exp % 2n !== 0n && this.isNegative(node.left);
+    }
+    if (node.type === "ADD") {
+      return this.isNegative(node.left) && this.isNegative(node.right);
+    }
+    if (node.type === "SUBTRACT") {
+      return this.isNegative(node.left) && this.isPositive(node.right);
     }
     if (node.type === "MULTIPLY" || node.type === "DIVIDE") {
       return (

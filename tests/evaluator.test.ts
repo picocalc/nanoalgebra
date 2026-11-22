@@ -818,6 +818,7 @@ describe("evaluate", () => {
 
       expect(printNode(simplify("abs(pi)"))).toBe("pi");
       expect(printNode(simplify("abs(-pi)"))).toBe("pi");
+      expect(printNode(simplify("abs(pi + 1)"))).toBe("pi + 1");
       expect(printNode(simplify("abs(pi^2)"))).toBe("pi^2");
       expect(printNode(simplify("abs(pi)^2"))).toBe("pi^2");
       expect(printNode(simplify("abs(e^pi)"))).toBe("e^pi");
@@ -838,6 +839,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("(abs(x^3))^2"))).toBe("x^6");
       expect(printNode(simplify("abs(abs(x))"))).toBe("abs(x)");
       expect(printNode(simplify("abs(-abs(x))"))).toBe("abs(x)");
+      expect(printNode(simplify("abs(abs(x) + 1)"))).toBe("abs(x) + 1");
       expect(printNode(simplify("abs(2x)"))).toBe("2abs(x)");
       expect(printNode(simplify("x^2 / abs(x)"))).toBe("abs(x)");
       expect(printNode(simplify("x^3 / abs(x)"))).toBe("x * abs(x)");
@@ -1015,6 +1017,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(e^z)", options))).toBe("abs(e^z)");
       expect(printNode(simplify("abs(abs(z))", options))).toBe("abs(z)");
       expect(printNode(simplify("abs(-abs(z))", options))).toBe("abs(z)");
+      expect(printNode(simplify("abs(abs(z) + 1)", options))).toBe(
+        "abs(z) + 1",
+      );
       expect(printNode(simplify("abs(2z)", options))).toBe("2abs(z)");
       expect(printNode(simplify("z^2 / abs(z)", options))).toBe("z^2 / abs(z)");
       expect(printNode(simplify("z^3 / abs(z)", options))).toBe("z^3 / abs(z)");
