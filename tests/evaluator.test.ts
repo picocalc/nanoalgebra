@@ -849,7 +849,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(-x)", negativeXoptions))).toBe("-x");
     });
 
-    it("handles sqrt with abs functions", () => {
+    it("handles sqrt function with abs function", () => {
       expect(printNode(simplify("abs(sqrt(x))"))).toBe("x^(1/2)");
     });
 
@@ -887,6 +887,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("ceil(floor(x)^2)"))).toBe("floor(x)^2");
       expect(printNode(simplify("floor(ceil(x)^2)"))).toBe("ceil(x)^2");
 
+      expect(printNode(simplify("ceil(floor(x)^-1)"))).not.toBe("floor(x)^-1");
+      expect(printNode(simplify("floor(ceil(x)^-1)"))).not.toBe("ceil(x)^-1");
+
       expect(printNode(simplify("floor(x + 1)"))).toBe("floor(x) + 1");
       expect(printNode(simplify("ceil(x + 1)"))).toBe("ceil(x) + 1");
 
@@ -899,6 +902,13 @@ describe("evaluate", () => {
       expect(printNode(simplify("ceil(x + floor(x))"))).toBe(
         "ceil(x) + floor(x)",
       );
+    });
+
+    it("handles floor and ceil functions with abs function", () => {
+      expect(printNode(simplify("floor(abs(floor(x)))"))).toBe("abs(floor(x))");
+      expect(printNode(simplify("ceil(abs(floor(x)))"))).toBe("abs(floor(x))");
+      expect(printNode(simplify("ceil(abs(ceil(x)))"))).toBe("abs(ceil(x))");
+      expect(printNode(simplify("floor(abs(ceil(x)))"))).toBe("abs(ceil(x))");
     });
 
     it("handles functions", () => {
@@ -1016,7 +1026,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(3 + 4i)", options))).not.toBe("7");
     });
 
-    it("handles sqrt with abs functions", () => {
+    it("handles sqrt function with abs function", () => {
       expect(printNode(simplify("abs(sqrt(x))", options))).not.toBe("x^(1/2)");
       expect(
         printNode(

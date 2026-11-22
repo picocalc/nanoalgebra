@@ -50,8 +50,10 @@ export function isInteger(node: TreeNode): boolean {
   if (node.type === "DECIMAL") return node.exponent >= 0;
   if (
     node.type === "FUNCTION" &&
-    (node.name === "floor" || node.name === "ceil") &&
-    node.args.length === 1
+    node.args.length === 1 &&
+    (node.name === "floor" ||
+      node.name === "ceil" ||
+      (node.name === "abs" && isInteger(node.args[0])))
   ) {
     return true;
   }
@@ -64,7 +66,7 @@ export function isInteger(node: TreeNode): boolean {
   }
   if (node.type === "POWER") {
     const exp = tryGetIntegerValue(node.right);
-    return !!exp && isInteger(node.left);
+    return exp !== null && exp >= 0n && isInteger(node.left);
   }
   return false;
 }
