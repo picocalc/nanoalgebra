@@ -169,7 +169,9 @@ export class Evaluator {
         if (isOne(right)) return left;
         if (isZero(right) || isOne(left)) return ONE;
         if (isZero(left)) {
-          return isNegativeNumber(right) ? new Undefined(simplified) : left;
+          if (this.isPositive(right)) return left;
+          if (this.isNegative(right)) return new Undefined(simplified);
+          return simplified;
         }
         if (
           !this.complex &&
@@ -295,7 +297,7 @@ export class Evaluator {
   }
 
   private isPositive(node: TreeNode): boolean {
-    if (isNumerical(node)) return !isNegativeNumber(node);
+    if (isNumerical(node)) return !isNegativeNumber(node) && !isZero(node);
     if (this.symbolDomain(node) === "positive") return true;
     if (node.type === "FUNCTION" && node.name === "abs") return true;
     if (node.type === "POWER") {
@@ -453,11 +455,8 @@ export class Evaluator {
     return factors.length === 1 ? factors[0] : undefined;
   }
 
-  private getBaseAndExp(node: TreeNode): {
-    base: TreeNode;
-    exp: NumericalNode;
-  } {
-    if (node.type === "POWER" && isNumerical(node.right)) {
+  private getBaseAndExp(node: TreeNode): { base: TreeNode; exp: TreeNode } {
+    if (node.type === "POWER") {
       return { base: node.left, exp: node.right };
     }
     return { base: node, exp: ONE };
@@ -473,7 +472,7 @@ export class Evaluator {
     return { base: abs ? base.args[0] : base, exp, abs };
   }
 
-  private packBase(base: TreeNode, exp: NumericalNode, abs: boolean): TreeNode {
+  private packBase(base: TreeNode, exp: TreeNode, abs: boolean): TreeNode {
     if (isZero(exp)) return ONE;
     const target =
       abs &&
@@ -507,9 +506,25 @@ export class Evaluator {
           const bExp = isDivide ? negate(b.exp) : b.exp;
 
           if (a.abs === b.abs) {
-            const totalExp = this.evaluateNumericBinary(a.exp, bExp, "ADD");
-            used[j] = true;
+            if (
+              !a.abs &&
+              (isZero(a.base) ||
+                (!this.complex &&
+                  !this.isPositive(a.base) &&
+                  (!isNumerical(a.exp) || !isNumerical(b.exp))))
+            ) {
+              continue;
+            }
+            const totalExp = this.simplify(new Add(a.exp, bExp));
             if (!a.abs && this.losesEvenRoot(a.base, totalExp, a.exp, b.exp)) {
+              if (
+                !isNumerical(a.exp) ||
+                !isNumerical(b.exp) ||
+                !isNumerical(totalExp)
+              ) {
+                continue;
+              }
+              used[j] = true;
               const f1 = toFraction(a.exp);
               const f2 = toFraction(b.exp);
               const fTotal = toFraction(totalExp);
@@ -520,8 +535,11 @@ export class Evaluator {
                 new Power(a.base, new Fraction(1n, rootDenom)),
               );
               factors.push(new Power(rootNode, new Integer(outerExp)));
-            } else if (!isZero(totalExp)) {
-              factors.push(this.packBase(a.base, totalExp, a.abs));
+            } else {
+              used[j] = true;
+              if (!isZero(totalExp)) {
+                factors.push(this.packBase(a.base, totalExp, a.abs));
+              }
             }
             changed = matched = true;
             break;
@@ -534,11 +552,7 @@ export class Evaluator {
           if (even === 0n) continue;
 
           used[j] = true;
-          const totalAbs = this.evaluateNumericBinary(
-            new Integer(even),
-            absExp,
-            "ADD",
-          );
+          const totalAbs = this.simplify(new Add(new Integer(even), absExp));
           if (rem !== 0n) {
             factors.push(this.packBase(a.base, new Integer(rem), false));
           }
@@ -556,7 +570,7 @@ export class Evaluator {
           isEqual(a.exp, b.exp) &&
           !(isDivide && isZero(b.base)) &&
           ((!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
-            (!this.complex && !this.isEvenRoot(a.exp)))
+            (!this.complex && isNumerical(a.exp) && !this.isEvenRoot(a.exp)))
         ) {
           used[j] = true;
           const combinedBase = isDivide
@@ -701,11 +715,7 @@ export class Evaluator {
       const remaining: TreeNode[] = [];
 
       for (const factor of allFactors) {
-        const canSplit =
-          isUnrestricted ||
-          (isNumerical(factor)
-            ? !isNegativeNumber(factor) && !isZero(factor)
-            : this.isPositive(factor));
+        const canSplit = isUnrestricted || this.isPositive(factor);
         if (canSplit) {
           splittable.push(factor);
         } else {

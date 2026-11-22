@@ -709,6 +709,12 @@ describe("evaluate", () => {
       expect(printNode(simplify("(pi + 1/2) / (pi + 1/2)"))).toBe("1");
 
       expect(printNode(simplify("(1 + pi + e) / (pi + e + 1)"))).toBe("1");
+
+      expect(printNode(simplify("pi^e * pi^-e"))).toBe("1");
+      expect(printNode(simplify("e^pi * e^-pi"))).toBe("1");
+
+      expect(printNode(simplify("2^e * 2^-e"))).toBe("1");
+      expect(printNode(simplify("2^pi * 2^-pi"))).toBe("1");
     });
 
     it("handles exponentiation of constants", () => {
@@ -753,6 +759,20 @@ describe("evaluate", () => {
       expect(printNode(simplify("(x^2)^(1/2)"))).toBe("abs(x)");
       expect(printNode(simplify("(x^3)^(1/3)"))).toBe("x");
       expect(printNode(simplify("(x^4)^(1/4)"))).toBe("abs(x)");
+    });
+
+    it("handles exponentiation with multiplications", () => {
+      expect(printNode(simplify("x^2 * x^-2"))).toBe("1");
+      expect(printNode(simplify("2^x * 2^-x"))).toBe("1");
+      expect(printNode(simplify("e^x * e^-x"))).toBe("1");
+
+      expect(printNode(simplify("x^x * x^-x"))).not.toBe("1");
+      expect(printNode(simplify("(-2)^x * (-2)^-x"))).not.toBe("1");
+      expect(printNode(simplify("0^x * 0^-x"))).not.toBe("1");
+
+      expect(printNode(simplify("0^x * 0^-x", { complex: true }))).not.toBe(
+        "1",
+      );
     });
   });
 
