@@ -838,6 +838,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("(pi^2)^3"))).toBe("pi^6");
 
       expect(printNode(simplify("(pi^4)^(1/2)"))).toBe("pi^2");
+
+      expect(printNode(simplify("1e2 / (1e2^pi)"))).toBe("100^(1 - pi)");
     });
   });
 
@@ -891,6 +893,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(x)^-1"))).toBe("x^(-1/2)");
       expect(printNode(simplify("sqrt(x) * sqrt(x)^3"))).toBe("(x^(1/2))^4");
       expect(printNode(simplify("sqrt(x) / sqrt(x)^-1"))).toBe("(x^(1/2))^2");
+
+      expect(printNode(simplify("(1 / sqrt(x)) * sqrt(x)"))).toBe("1");
     });
 
     it("handles abs function", () => {

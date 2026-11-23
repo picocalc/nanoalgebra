@@ -24,12 +24,8 @@ export function negate(node: TreeNode): TreeNode {
 export function tryToFraction(node: NumericalNode): Fraction | null {
   if (node.type === "FRACTION") return node;
   if (node.type === "INTEGER") return new Fraction(node.value, 1n);
-  if (node.whole !== 0n && isAbovePowThreshold(10n, node.exponent)) {
-    return null;
-  }
-  return node.exponent >= 0n
-    ? new Fraction(node.whole * 10n ** node.exponent, 1n)
-    : new Fraction(node.whole, 10n ** -node.exponent);
+  if (node.whole && isAbovePowThreshold(10n, node.exponent)) return null;
+  return new Fraction(node.whole, 10n ** -node.exponent);
 }
 
 export function toDecimal(node: Integer | Decimal): Decimal {

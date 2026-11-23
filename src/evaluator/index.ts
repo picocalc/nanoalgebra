@@ -1,5 +1,5 @@
 import { ONE, ZERO } from "#lib/constants";
-import { negate, tryToFraction } from "#lib/convert";
+import { negate, normalizeDecimal, tryToFraction } from "#lib/convert";
 import type { DefinedNode, Modulo, TreeNode } from "#lib/nodes";
 import {
   Add,
@@ -14,6 +14,7 @@ import {
   Undefined,
 } from "#lib/nodes";
 import {
+  isAbovePowThreshold,
   isEqual,
   isEvenInteger,
   isEvenRoot,
@@ -58,10 +59,18 @@ export class Evaluator {
   public simplify(node: TreeNode): TreeNode {
     switch (node.type) {
       case "INTEGER":
-      case "DECIMAL":
       case "FRACTION":
       case "UNDEFINED":
         return node;
+
+      case "DECIMAL": {
+        if (node.whole === 0n) return ZERO;
+        if (node.exponent <= 0n) {
+          return normalizeDecimal(node.whole, node.exponent);
+        }
+        if (isAbovePowThreshold(10n, node.exponent)) return node;
+        return new Integer(node.whole * 10n ** node.exponent);
+      }
 
       case "SYMBOL": {
         if (this.domain.of(node) === "complex" && !this.domain.complex) {
@@ -402,6 +411,7 @@ export class Evaluator {
           return null;
         }
         const totalExp = this.simplify(new Add(a.exp, bExp));
+        if (isZero(totalExp)) return [];
         if (
           !a.abs &&
           this.domain.losesEvenRoot(a.base, totalExp, a.exp, b.exp)
