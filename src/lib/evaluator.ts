@@ -1,6 +1,6 @@
 import { iNthRoot } from "#math/iroot";
 import { lcm } from "#math/lcm";
-import { modPow } from "#math/modulo";
+import { floorMod, modPow } from "#math/modulo";
 import { mergeMapWithDefaults } from "#utils/merge";
 
 import { ONE, ZERO } from "./constants";
@@ -30,6 +30,7 @@ import {
   isAbovePowThreshold,
   isEqual,
   isEvenInteger,
+  isEvenRoot,
   isNegativeNumber,
   isNegativeOne,
   isNumerical,
@@ -161,6 +162,10 @@ export class Evaluator {
           const evaluated = this.evaluateNumericMod(left, right);
           if (evaluated) return evaluated;
         }
+        if (left.type === "POWER" && isNumerical(right)) {
+          const evaluated = this.evaluatePowerMod(left, right);
+          if (evaluated) return evaluated;
+        }
         return simplified;
       }
 
@@ -178,7 +183,7 @@ export class Evaluator {
         }
         if (
           !this.complex &&
-          this.isEvenRoot(right) &&
+          isEvenRoot(right) &&
           (isNegativeNumber(left) || this.symbolDomain(left) === "negative")
         ) {
           return new Undefined(simplified);
@@ -331,7 +336,7 @@ export class Evaluator {
       if (
         this.isReal(node.left) &&
         (isEvenInteger(node.right) ||
-          (this.isEvenRoot(node.right) && !this.isNegative(node.left)))
+          (isEvenRoot(node.right) && !this.isNegative(node.left)))
       ) {
         return true;
       }
@@ -417,22 +422,6 @@ export class Evaluator {
     }
   }
 
-  private isEvenRoot(exp: TreeNode): boolean {
-    if (!isNumerical(exp)) return false;
-    if (exp.type === "INTEGER") return false;
-    if (exp.type === "FRACTION") return exp.denominator % 2n === 0n;
-    if (exp.exponent >= 0n || exp.whole === 0n) return false;
-
-    const negExp = -exp.exponent;
-    let w = exp.whole < 0n ? -exp.whole : exp.whole;
-    let twos = 0n;
-    while ((w & 1n) === 0n && twos < negExp) {
-      w >>= 1n;
-      twos += 1n;
-    }
-    return twos < negExp;
-  }
-
   private losesEvenRoot(
     base: TreeNode,
     newExp: TreeNode,
@@ -442,9 +431,8 @@ export class Evaluator {
     return (
       !this.complex &&
       !this.isPositive(base) &&
-      (this.isEvenRoot(exp1) ||
-        (exp2 !== undefined && this.isEvenRoot(exp2))) &&
-      !this.isEvenRoot(newExp)
+      (isEvenRoot(exp1) || (!!exp2 && isEvenRoot(exp2))) &&
+      !isEvenRoot(newExp)
     );
   }
 
@@ -655,7 +643,7 @@ export class Evaluator {
           !(isDivide && isZero(b.base)) &&
           (isOne(a.exp) ||
             (!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
-            (!this.complex && isNumerical(a.exp) && !this.isEvenRoot(a.exp)))
+            (!this.complex && isNumerical(a.exp) && !isEvenRoot(a.exp)))
         ) {
           const combinedBase = isDivide
             ? this.evaluateNumericDivide(a.base, b.base)
@@ -781,7 +769,7 @@ export class Evaluator {
       if (
         this.isReal(innerBase) &&
         isEvenInteger(innerExp) &&
-        this.isEvenRoot(right)
+        isEvenRoot(right)
       ) {
         const base = this.isPositive(innerBase)
           ? innerBase
@@ -802,7 +790,7 @@ export class Evaluator {
     if (left.type === "MULTIPLY" && isNumerical(right)) {
       const { coeff, factors } = this.extractFactors(left);
       const isUnrestricted =
-        expInt !== null || (!this.complex && !this.isEvenRoot(right));
+        expInt !== null || (!this.complex && !isEvenRoot(right));
 
       const allFactors = isOne(coeff) ? factors : [coeff, ...factors];
       const splittable: TreeNode[] = [];
@@ -968,15 +956,40 @@ export class Evaluator {
       (a, b) => {
         const n1 = a.numerator * b.denominator;
         const n2 = b.numerator * a.denominator;
-        return [((n1 % n2) + n2) % n2, a.denominator * b.denominator];
+        return [floorMod(n1, n2), a.denominator * b.denominator];
       },
       (a, b) => {
         const aligned = this.alignDecimals(a, b);
         if (!aligned) return null;
         const { c1, c2, exp } = aligned;
-        return [((c1 % c2) + c2) % c2, exp];
+        return [floorMod(c1, c2), exp];
       },
     );
+  }
+
+  private evaluatePowerMod(power: Power, right: NumericalNode): Integer | null {
+    const mod = tryGetIntegerValue(right);
+    const exp = tryGetIntegerValue(power.right);
+    if (mod === null || mod === 0n || exp === null || exp <= 0n) {
+      return null;
+    }
+
+    const m = mod < 0n ? -mod : mod;
+    if (m === 1n) return ZERO;
+
+    let b: bigint;
+    const base = tryGetIntegerValue(power.left);
+    if (base !== null) {
+      b = floorMod(base, m);
+    } else if (power.left.type === "DECIMAL" && power.left.exponent >= 0n) {
+      const pow10 = modPow(10n, power.left.exponent, m);
+      b = floorMod((power.left.whole % m) * pow10, m);
+    } else {
+      return null;
+    }
+
+    const rem = modPow(b, exp, m);
+    return new Integer(floorMod(rem, mod));
   }
 
   private evaluateNumericPower(

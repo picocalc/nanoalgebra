@@ -180,6 +180,11 @@ describe("evaluate", () => {
       expect(printNode(simplify("2 * 0.5"))).toBe("1");
       expect(printNode(simplify("0.3 * 7"))).toBe("2.1");
     });
+
+    it("handles division of decimals", () => {
+      expect(printNode(simplify("0.25 / 2"))).toBe("1/8");
+      expect(printNode(simplify("0.005 / 0.2"))).toBe("1/40");
+    });
   });
 
   it("handles scientific notation", () => {
@@ -343,6 +348,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("0 % pi"))).toBe("0");
       expect(printNode(simplify("pi % e"))).toBe("pi % e");
       expect(printNode(simplify("e % pi"))).toBe("e % pi");
+      expect(printNode(simplify("e^pi % 7"))).toBe("e^pi % 7");
+      expect(printNode(simplify("e^3 % 7"))).toBe("e^3 % 7");
     });
 
     it("handles modulo with large numbers", () => {
@@ -351,6 +358,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("1e1000000 % 11"))).toBe("1");
 
       expect(printNode(simplify("7^77777 % 5"))).toBe("2");
+
+      expect(printNode(simplify("(3e100000)^100000 % 13"))).toBe("9");
     });
   });
 
