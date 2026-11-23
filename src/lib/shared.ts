@@ -37,6 +37,10 @@ export function isNumerical(node: TreeNode): node is NumericalNode {
 
 export function tryGetIntegerValue(node: TreeNode): bigint | null {
   if (node.type === "INTEGER") return node.value;
+  if (node.type === "DECIMAL" && node.exponent >= 0n) {
+    if (isAbovePowThreshold(10n, node.exponent)) return null;
+    return node.whole * 10n ** node.exponent;
+  }
   return null;
 }
 

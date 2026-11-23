@@ -911,6 +911,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(x)"))).toBe("abs(x)");
       expect(printNode(simplify("abs(-x)"))).toBe("abs(x)");
       expect(printNode(simplify("abs(x^2)"))).toBe("x^2");
+      expect(printNode(simplify("abs(x^1e2)"))).toBe("x^100");
       expect(printNode(simplify("abs(2^x)"))).toBe("2^x");
       expect(printNode(simplify("abs(e^x)"))).toBe("e^x");
       expect(printNode(simplify("abs(x)^2"))).toBe("x^2");
@@ -1038,6 +1039,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("i^6", options))).toBe("-1");
       expect(printNode(simplify("i^7", options))).toBe("-i");
       expect(printNode(simplify("i^8", options))).toBe("1");
+
+      expect(printNode(simplify("i^1e2", options))).toBe("1");
 
       expect(printNode(simplify("i^-1", options))).toBe("-i");
       expect(printNode(simplify("i^-2", options))).toBe("-1");
