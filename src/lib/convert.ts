@@ -1,6 +1,6 @@
 import type { NumericalNode, TreeNode } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
-import { isNegativeNumber } from "./shared";
+import { isAbovePowThreshold, isNegativeNumber } from "./shared";
 
 export function negate(node: NumericalNode): NumericalNode;
 export function negate(node: TreeNode): TreeNode;
@@ -20,9 +20,12 @@ export function negate(node: TreeNode): TreeNode {
   return new Multiply(new Integer(-1), node);
 }
 
-export function toFraction(node: NumericalNode): Fraction {
+export function tryToFraction(node: NumericalNode): Fraction | null {
   if (node.type === "FRACTION") return node;
   if (node.type === "INTEGER") return new Fraction(node.value, 1n);
+  if (node.whole !== 0n && isAbovePowThreshold(10n, node.exponent)) {
+    return null;
+  }
   return node.exponent >= 0n
     ? new Fraction(node.whole * 10n ** node.exponent, 1n)
     : new Fraction(node.whole, 10n ** -node.exponent);

@@ -1,9 +1,10 @@
 import { iNthRoot } from "#math/iroot";
 import { lcm } from "#math/lcm";
+import { modPow } from "#math/modulo";
 import { mergeMapWithDefaults } from "#utils/merge";
 
 import { ONE, ZERO } from "./constants";
-import { negate, toFraction } from "./convert";
+import { negate, tryToFraction } from "./convert";
 import type {
   BinaryNode,
   BinaryOpType,
@@ -30,11 +31,11 @@ import {
   isEqual,
   isEvenInteger,
   isNegativeNumber,
+  isNegativeOne,
   isNumerical,
   isOne,
   isZero,
   tryGetIntegerValue,
-  isNegativeOne,
 } from "./shared";
 
 type Term = { coeff: NumericalNode; body: TreeNode };
@@ -121,7 +122,8 @@ export class Evaluator {
       case "ADD":
       case "SUBTRACT": {
         if (isNumerical(left) && isNumerical(right)) {
-          return this.evaluateNumericBinary(left, right, node.type);
+          const evaluated = this.evaluateNumericBinary(left, right, node.type);
+          if (evaluated) return evaluated;
         }
         if (isZero(left)) {
           return node.type === "ADD" ? right : this.simplify(negate(right));
@@ -135,7 +137,8 @@ export class Evaluator {
         if (isOne(left)) return right;
         if (isOne(right)) return left;
         if (isNumerical(left) && isNumerical(right)) {
-          return this.evaluateNumericMultiply(left, right);
+          const evaluated = this.evaluateNumericMultiply(left, right);
+          if (evaluated) return evaluated;
         }
         return this.tryMultiplySymbolic(left, right) ?? simplified;
       }
@@ -145,7 +148,8 @@ export class Evaluator {
         if (isOne(right)) return left;
         if (isZero(left)) return ZERO;
         if (isNumerical(left) && isNumerical(right)) {
-          return this.evaluateNumericDivide(left, right);
+          const evaluated = this.evaluateNumericDivide(left, right);
+          if (evaluated) return evaluated;
         }
         return this.tryDivideSymbolic(left, right) ?? simplified;
       }
@@ -153,9 +157,11 @@ export class Evaluator {
       case "MOD": {
         if (isZero(right)) return new Undefined(simplified);
         if (isZero(left)) return ZERO;
-        return isNumerical(left) && isNumerical(right)
-          ? this.evaluateNumericMod(left, right)
-          : simplified;
+        if (isNumerical(left) && isNumerical(right)) {
+          const evaluated = this.evaluateNumericMod(left, right);
+          if (evaluated) return evaluated;
+        }
+        return simplified;
       }
 
       case "POWER": {
@@ -283,8 +289,19 @@ export class Evaluator {
   private evaluateNumericFloorCeil(
     node: NumericalNode,
     op: "floor" | "ceil",
-  ): Integer {
-    const { numerator, denominator } = toFraction(node);
+  ): TreeNode {
+    if (node.type === "DECIMAL" && node.exponent < 0n) {
+      if (node.whole === 0n) return ZERO;
+      if (BigInt.bitLength(node.whole) <= -node.exponent) {
+        if (op === "floor") return node.whole > 0n ? ZERO : new Integer(-1n);
+        return node.whole > 0n ? ONE : ZERO;
+      }
+    }
+
+    const frac = tryToFraction(node);
+    if (!frac) return new FunctionCall(op, [node]);
+
+    const { numerator, denominator } = frac;
     const q = numerator / denominator;
     const r = numerator % denominator;
     if (op === "floor") return new Integer(r < 0n ? q - 1n : q);
@@ -401,7 +418,19 @@ export class Evaluator {
   }
 
   private isEvenRoot(exp: TreeNode): boolean {
-    return isNumerical(exp) && toFraction(exp).denominator % 2n === 0n;
+    if (!isNumerical(exp)) return false;
+    if (exp.type === "INTEGER") return false;
+    if (exp.type === "FRACTION") return exp.denominator % 2n === 0n;
+    if (exp.exponent >= 0n || exp.whole === 0n) return false;
+
+    const negExp = -exp.exponent;
+    let w = exp.whole < 0n ? -exp.whole : exp.whole;
+    let twos = 0n;
+    while ((w & 1n) === 0n && twos < negExp) {
+      w >>= 1n;
+      twos += 1n;
+    }
+    return twos < negExp;
   }
 
   private losesEvenRoot(
@@ -450,15 +479,20 @@ export class Evaluator {
 
     for (const term of rawTerms) {
       const existing = terms.find((t) => isEqual(t.body, term.body));
-      if (existing) {
-        existing.coeff = this.evaluateNumericBinary(
-          existing.coeff,
-          term.coeff,
-          "ADD",
-        );
-      } else {
+      if (!existing) {
         terms.push(term);
+        continue;
       }
+      const merged = this.evaluateNumericBinary(
+        existing.coeff,
+        term.coeff,
+        "ADD",
+      );
+      if (!merged) {
+        terms.push(term);
+        continue;
+      }
+      existing.coeff = merged;
     }
 
     return this.buildSum(terms.filter((t) => !isZero(t.coeff)));
@@ -575,10 +609,11 @@ export class Evaluator {
               ) {
                 continue;
               }
+              const f1 = tryToFraction(a.exp);
+              const f2 = tryToFraction(b.exp);
+              const fTotal = tryToFraction(totalExp);
+              if (!f1 || !f2 || !fTotal) continue;
               used[j] = true;
-              const f1 = toFraction(a.exp);
-              const f2 = toFraction(b.exp);
-              const fTotal = toFraction(totalExp);
               const rootDenom = lcm(f1.denominator, f2.denominator);
               const outerExp =
                 (fTotal.numerator * rootDenom) / fTotal.denominator;
@@ -622,10 +657,11 @@ export class Evaluator {
             (!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
             (!this.complex && isNumerical(a.exp) && !this.isEvenRoot(a.exp)))
         ) {
-          used[j] = true;
           const combinedBase = isDivide
             ? this.evaluateNumericDivide(a.base, b.base)
             : this.evaluateNumericMultiply(a.base, b.base);
+          if (!combinedBase) continue;
+          used[j] = true;
           factors.push(this.simplify(new Power(combinedBase, a.exp)));
           changed = matched = true;
           break;
@@ -667,6 +703,8 @@ export class Evaluator {
     if (t1.factors.length !== 0 && t2.factors.length !== 0) return null;
 
     const coeff = this.evaluateNumericMultiply(t1.coeff, t2.coeff);
+    if (!coeff) return null;
+
     const body = isOne(t1.body) ? t2.body : t1.body;
     if (
       isNegativeOne(coeff) &&
@@ -695,17 +733,20 @@ export class Evaluator {
       if (!single) return null;
       const rightInfo = this.getBaseAndExp(single);
 
+      const coeff = this.evaluateNumericDivide(num.coeff, den.coeff);
+      if (!coeff) return null;
+
       return this.withCoeff(
-        this.evaluateNumericDivide(num.coeff, den.coeff),
+        coeff,
         this.simplify(new Power(rightInfo.base, negate(rightInfo.exp))),
       );
     }
 
     if (den.factors.length === 0) {
-      return this.withCoeff(
-        this.evaluateNumericDivide(num.coeff, den.coeff),
-        num.body,
-      );
+      const coeff = this.evaluateNumericDivide(num.coeff, den.coeff);
+      if (!coeff) return null;
+
+      return this.withCoeff(coeff, num.body);
     }
 
     const { factors, remainingDen, changed } = this.combineFactors(
@@ -716,6 +757,7 @@ export class Evaluator {
     if (!changed && isOne(den.coeff)) return null;
 
     const combinedCoeff = this.evaluateNumericDivide(num.coeff, den.coeff);
+    if (!combinedCoeff) return null;
     if (isZero(combinedCoeff)) return ZERO;
 
     const numNode = this.withCoeff(combinedCoeff, this.multiplyAll(factors));
@@ -803,7 +845,17 @@ export class Evaluator {
     return null;
   }
 
-  private static alignDecimals(d1: Decimal, d2: Decimal) {
+  private toDecimalParts(node: Integer | Decimal): {
+    whole: bigint;
+    exponent: bigint;
+  } {
+    return node.type === "INTEGER"
+      ? { whole: node.value, exponent: 0n }
+      : { whole: node.whole, exponent: node.exponent };
+  }
+
+  private alignDecimals(d1: Decimal, d2: Decimal) {
+    if (isAbovePowThreshold(10n, d1.exponent - d2.exponent)) return null;
     const exp = d1.exponent < d2.exponent ? d1.exponent : d2.exponent;
     return {
       c1: d1.whole * 10n ** (d1.exponent - exp),
@@ -816,24 +868,28 @@ export class Evaluator {
     left: NumericalNode,
     right: NumericalNode,
     fracOp: (a: Fraction, b: Fraction) => [bigint, bigint],
-    decOp: (d1: Decimal, d2: Decimal) => [bigint, bigint],
-  ): NumericalNode {
+    decOp: (d1: Decimal, d2: Decimal) => [bigint, bigint] | null,
+  ): NumericalNode | null {
     if (left.type === "FRACTION" || right.type === "FRACTION") {
-      const [n, d] = fracOp(toFraction(left), toFraction(right));
+      const f1 = tryToFraction(left);
+      const f2 = tryToFraction(right);
+      if (!f1 || !f2) return null;
+      const [n, d] = fracOp(f1, f2);
       return this.normalizeFraction(n, d);
     }
-    const [coeff, exp] = decOp(
+    const res = decOp(
       left.type === "INTEGER" ? new Decimal(left.value, 0n) : left,
       right.type === "INTEGER" ? new Decimal(right.value, 0n) : right,
     );
-    return this.normalizeDecimal(coeff, exp);
+    if (!res) return null;
+    return this.normalizeDecimal(res[0], res[1]);
   }
 
   private evaluateNumericBinary(
     left: NumericalNode,
     right: NumericalNode,
     op: "ADD" | "SUBTRACT",
-  ): NumericalNode {
+  ): NumericalNode | null {
     return this.evalNumericPair(
       left,
       right,
@@ -844,7 +900,9 @@ export class Evaluator {
         a.denominator * b.denominator,
       ],
       (a, b) => {
-        const { c1, c2, exp } = Evaluator.alignDecimals(a, b);
+        const aligned = this.alignDecimals(a, b);
+        if (!aligned) return null;
+        const { c1, c2, exp } = aligned;
         return [op === "ADD" ? c1 + c2 : c1 - c2, exp];
       },
     );
@@ -853,7 +911,7 @@ export class Evaluator {
   private evaluateNumericMultiply(
     left: NumericalNode,
     right: NumericalNode,
-  ): NumericalNode {
+  ): NumericalNode | null {
     return this.evalNumericPair(
       left,
       right,
@@ -865,9 +923,20 @@ export class Evaluator {
   private evaluateNumericDivide(
     left: NumericalNode,
     right: NumericalNode,
-  ): NumericalNode {
-    const f1 = toFraction(left);
-    const f2 = toFraction(right);
+  ): NumericalNode | null {
+    if (left.type !== "FRACTION" && right.type !== "FRACTION") {
+      const d1 = this.toDecimalParts(left);
+      const d2 = this.toDecimalParts(right);
+      const diff = d1.exponent - d2.exponent;
+      if (isAbovePowThreshold(10n, diff)) return null;
+      return diff >= 0n
+        ? this.normalizeFraction(d1.whole * 10n ** diff, d2.whole)
+        : this.normalizeFraction(d1.whole, d2.whole * 10n ** -diff);
+    }
+
+    const f1 = tryToFraction(left);
+    const f2 = tryToFraction(right);
+    if (!f1 || !f2) return null;
     return this.normalizeFraction(
       f1.numerator * f2.denominator,
       f1.denominator * f2.numerator,
@@ -877,7 +946,22 @@ export class Evaluator {
   private evaluateNumericMod(
     left: NumericalNode,
     right: NumericalNode,
-  ): NumericalNode {
+  ): NumericalNode | null {
+    if (left.type !== "FRACTION" && right.type !== "FRACTION") {
+      const d1 = this.toDecimalParts(left);
+      const d2 = this.toDecimalParts(right);
+      if (
+        d1.exponent >= 0n &&
+        d2.exponent >= 0n &&
+        !isAbovePowThreshold(10n, d2.exponent)
+      ) {
+        const mod = d2.whole * 10n ** d2.exponent;
+        const pow10 = modPow(10n, d1.exponent, mod < 0n ? -mod : mod);
+        const rem = ((((d1.whole % mod) * pow10) % mod) + mod) % mod;
+        return new Integer(rem);
+      }
+    }
+
     return this.evalNumericPair(
       left,
       right,
@@ -887,7 +971,9 @@ export class Evaluator {
         return [((n1 % n2) + n2) % n2, a.denominator * b.denominator];
       },
       (a, b) => {
-        const { c1, c2, exp } = Evaluator.alignDecimals(a, b);
+        const aligned = this.alignDecimals(a, b);
+        if (!aligned) return null;
+        const { c1, c2, exp } = aligned;
         return [((c1 % c2) + c2) % c2, exp];
       },
     );
@@ -897,12 +983,15 @@ export class Evaluator {
     left: NumericalNode,
     right: NumericalNode,
   ): TreeNode | null {
-    const exp = toFraction(right);
+    const exp = tryToFraction(right);
+    if (!exp) return null;
     if (exp.denominator === 1n) {
       return this.evaluatePower(left, exp.numerator);
     }
 
-    const base = toFraction(left);
+    const base = tryToFraction(left);
+    if (!base) return null;
+
     const isNegBase = base.numerator < 0n;
     if (isNegBase) {
       if (!this.complex) {
@@ -955,7 +1044,16 @@ export class Evaluator {
       }
     }
 
-    const f = toFraction(base);
+    if (base.type === "DECIMAL" && (base.whole === 1n || base.whole === -1n)) {
+      return this.normalizeDecimal(
+        base.whole ** (exp < 0n ? -exp : exp),
+        base.exponent * exp,
+      );
+    }
+
+    const f = tryToFraction(base);
+    if (!f) return new Power(base, new Integer(exp));
+
     const [num, den, e] =
       exp > 0n
         ? [f.numerator, f.denominator, exp]
