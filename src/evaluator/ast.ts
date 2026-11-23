@@ -30,6 +30,14 @@ export function rebuildBinary(
   }
 }
 
+export function getBaseAndExp(node: TreeNode): {
+  base: TreeNode;
+  exp: TreeNode;
+} {
+  if (node.type === "POWER") return { base: node.left, exp: node.right };
+  return { base: node, exp: ONE };
+}
+
 export function extractFactors(node: TreeNode): {
   coeff: NumericalNode;
   factors: TreeNode[];

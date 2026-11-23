@@ -28,7 +28,12 @@ import { lcm } from "#math/lcm";
 import { mergeMapWithDefaults } from "#utils/merge";
 
 import type { Term } from "./ast";
-import { extractFactors, extractTerms, rebuildBinary } from "./ast";
+import {
+  extractFactors,
+  extractTerms,
+  getBaseAndExp,
+  rebuildBinary,
+} from "./ast";
 import {
   evaluateNumericBinary,
   evaluateNumericDivide,
@@ -422,13 +427,8 @@ export class Evaluator {
     return nodes.reduce((acc, f) => this.simplify(new Multiply(acc, f)), ONE);
   }
 
-  private getBaseAndExp(node: TreeNode): { base: TreeNode; exp: TreeNode } {
-    if (node.type === "POWER") return { base: node.left, exp: node.right };
-    return { base: node, exp: ONE };
-  }
-
   private unpackBase(node: TreeNode) {
-    const { base, exp } = this.getBaseAndExp(node);
+    const { base, exp } = getBaseAndExp(node);
     const abs =
       base.type === "FUNCTION" &&
       base.name === "abs" &&
@@ -615,11 +615,8 @@ export class Evaluator {
       const coeff = evaluateNumericDivide(num.coeff, den.coeff);
       if (!coeff) return null;
 
-      const rightInfo = this.getBaseAndExp(factor);
-      return this.withCoeff(
-        coeff,
-        this.simplify(new Power(rightInfo.base, negate(rightInfo.exp))),
-      );
+      const { base, exp } = getBaseAndExp(factor);
+      return this.withCoeff(coeff, this.simplify(new Power(base, negate(exp))));
     }
 
     if (den.factors.length === 0) {
