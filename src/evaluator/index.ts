@@ -1,11 +1,6 @@
 import { ONE, ZERO } from "#lib/constants";
-import { negate, tryToFraction } from "#lib/convert";
-import type {
-  BinaryNode,
-  DefinedNode,
-  NumericalNode,
-  TreeNode,
-} from "#lib/nodes";
+import { makeTerm, negate, tryToFraction } from "#lib/convert";
+import type { BinaryNode, DefinedNode, TreeNode } from "#lib/nodes";
 import {
   Add,
   Divide,
@@ -32,7 +27,8 @@ import {
 import { lcm } from "#math/lcm";
 import { mergeMapWithDefaults } from "#utils/merge";
 
-import { rebuildBinary } from "./ast";
+import type { Term } from "./ast";
+import { extractFactors, extractTerms, rebuildBinary } from "./ast";
 import {
   evaluateNumericBinary,
   evaluateNumericDivide,
@@ -42,8 +38,6 @@ import {
   evaluateNumericPower,
   evaluatePowerMod,
 } from "./numeric";
-
-type Term = { coeff: NumericalNode; body: TreeNode };
 
 type SymbolDomain = "positive" | "negative" | "real" | "complex";
 
@@ -220,7 +214,7 @@ export class Evaluator {
     if (this.isPositive(node)) return node;
     if (this.isNegative(node)) return this.simplify(negate(node));
     if (node.type === "MULTIPLY") {
-      const { coeff, factors } = this.extractFactors(node);
+      const { coeff, factors } = extractFactors(node);
       const nonUnitFactors = factors.filter(
         (f) => !(f.type === "SYMBOL" && f.name === "i"),
       );
@@ -239,7 +233,7 @@ export class Evaluator {
     if (this.isInteger(node)) return node;
     if (isNumerical(node)) return evaluateNumericFloorCeil(node, op);
     if (node.type === "ADD" || node.type === "SUBTRACT") {
-      const terms = this.extractTerms(node);
+      const terms = extractTerms(node);
       const nonIntTerms: Term[] = [];
       const intTerms: Term[] = [];
 
@@ -391,31 +385,14 @@ export class Evaluator {
     );
   }
 
-  private extractTerms(node: TreeNode, isSubtract = false): Term[] {
-    if (node.type === "ADD") {
-      return [
-        ...this.extractTerms(node.left, isSubtract),
-        ...this.extractTerms(node.right, isSubtract),
-      ];
-    }
-    if (node.type === "SUBTRACT") {
-      return [
-        ...this.extractTerms(node.left, isSubtract),
-        ...this.extractTerms(node.right, !isSubtract),
-      ];
-    }
-    const { coeff, body } = this.extractFactors(node);
-    return [{ coeff: isSubtract ? negate(coeff) : coeff, body }];
-  }
-
   private tryAddSubtractSymbolic(
     left: DefinedNode,
     right: DefinedNode,
     op: "ADD" | "SUBTRACT",
   ): TreeNode {
     const rawTerms = [
-      ...this.extractTerms(left, false),
-      ...this.extractTerms(right, op === "SUBTRACT"),
+      ...extractTerms(left, false),
+      ...extractTerms(right, op === "SUBTRACT"),
     ];
 
     const terms: Term[] = [];
@@ -438,41 +415,11 @@ export class Evaluator {
   }
 
   private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
-    return this.simplify(this.makeTerm(coeff, body));
-  }
-
-  private makeTerm(coeff: TreeNode, body: TreeNode): TreeNode {
-    if (isZero(coeff)) return ZERO;
-    if (isOne(coeff)) return body;
-    if (isOne(body)) return coeff;
-    return new Multiply(coeff, body);
+    return this.simplify(makeTerm(coeff, body));
   }
 
   private multiplyAll(nodes: readonly TreeNode[]): TreeNode {
     return nodes.reduce((acc, f) => this.simplify(new Multiply(acc, f)), ONE);
-  }
-
-  private extractFactors(node: TreeNode): {
-    coeff: NumericalNode;
-    factors: TreeNode[];
-    body: TreeNode;
-  } {
-    if (isNumerical(node)) {
-      return { coeff: node, factors: [], body: ONE };
-    }
-    if (node.type === "MULTIPLY") {
-      const left = this.extractFactors(node.left);
-      const right = this.extractFactors(node.right);
-      // Invariant: extractFactors is only called on simplified nodes, and
-      // tryMultiplySymbolic always merges pairs where both sides have a non-1
-      // coeff. Thus at most one side can have a non-1 coeff here.
-      const coeff = isOne(left.coeff) ? right.coeff : left.coeff;
-      const body = isOne(left.body)
-        ? right.body
-        : new Multiply(left.body, right.body);
-      return { coeff, factors: [...left.factors, ...right.factors], body };
-    }
-    return { coeff: ONE, factors: [node], body: node };
   }
 
   private getBaseAndExp(node: TreeNode): { base: TreeNode; exp: TreeNode } {
@@ -624,8 +571,8 @@ export class Evaluator {
       return this.simplify(new Divide(new Multiply(n1, n2), den));
     }
 
-    const t1 = this.extractFactors(left);
-    const t2 = this.extractFactors(right);
+    const t1 = extractFactors(left);
+    const t2 = extractFactors(right);
 
     const { factors, changed } = this.combineFactors(
       isOne(t1.coeff) ? t1.factors : [t1.coeff, ...t1.factors],
@@ -643,9 +590,9 @@ export class Evaluator {
       isNegativeOne(coeff) &&
       (body.type === "ADD" || body.type === "SUBTRACT")
     ) {
-      return this.buildSum(this.extractTerms(body, true));
+      return this.buildSum(extractTerms(body, true));
     }
-    return this.makeTerm(coeff, body);
+    return makeTerm(coeff, body);
   }
 
   private tryDivideSymbolic(
@@ -658,8 +605,8 @@ export class Evaluator {
       );
     }
 
-    const num = this.extractFactors(left);
-    const den = this.extractFactors(right);
+    const num = extractFactors(left);
+    const den = extractFactors(right);
 
     if (num.factors.length === 0) {
       const factor = den.factors.length === 1 ? den.factors[0] : undefined;
@@ -742,7 +689,7 @@ export class Evaluator {
     }
 
     if (left.type === "MULTIPLY" && isNumerical(right)) {
-      const { coeff, factors } = this.extractFactors(left);
+      const { coeff, factors } = extractFactors(left);
       const isUnrestricted =
         expInt !== null || (!this.complex && !isEvenRoot(right));
 
