@@ -1,3 +1,4 @@
+import { ZERO } from "./constants";
 import type { NumericalNode, TreeNode } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
 import { isAbovePowThreshold, isNegativeNumber } from "./shared";
@@ -29,4 +30,25 @@ export function tryToFraction(node: NumericalNode): Fraction | null {
   return node.exponent >= 0n
     ? new Fraction(node.whole * 10n ** node.exponent, 1n)
     : new Fraction(node.whole, 10n ** -node.exponent);
+}
+
+export function toDecimal(node: Integer | Decimal): Decimal {
+  return node.type === "INTEGER" ? new Decimal(node.value, 0n) : node;
+}
+
+export function normalizeDecimal(
+  coeff: bigint,
+  exp: bigint,
+): Decimal | Integer {
+  if (coeff === 0n) return ZERO;
+  while (coeff % 10n === 0n && exp < 0n) {
+    coeff /= 10n;
+    exp += 1n;
+  }
+  return exp === 0n ? new Integer(coeff) : new Decimal(coeff, exp);
+}
+
+export function normalizeFraction(n: bigint, d: bigint): Integer | Fraction {
+  const frac = new Fraction(n, d);
+  return frac.denominator === 1n ? new Integer(frac.numerator) : frac;
 }
