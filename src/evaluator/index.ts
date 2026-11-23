@@ -196,12 +196,12 @@ export class Evaluator {
           if (this.complex && isNegativeNumber(left)) {
             const exp = tryToFraction(right);
             if (exp && exp.denominator !== 1n) {
+              const mag = this.simplify(new Power(negate(left), right));
               if (exp.denominator === 2n) {
-                const mag = this.simplify(new Power(negate(left), right));
-                return this.withCoeff(mag, new SymbolNode("i"));
+                const c = (exp.numerator & 3n) === 3n ? negate(mag) : mag;
+                return this.withCoeff(c, new SymbolNode("i"));
               }
               if (isNegativeOne(left)) return simplified;
-              const mag = this.simplify(new Power(negate(left), right));
               return this.withCoeff(mag, new Power(new Integer(-1n), right));
             }
           }

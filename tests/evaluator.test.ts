@@ -1065,6 +1065,8 @@ describe("evaluate", () => {
       expect(printNode(simplify("216^(4/3)", options))).toBe("1296");
       expect(printNode(simplify("32^-0.2", options))).toBe("1/2");
 
+      expect(printNode(simplify("(-4)^(3/2)", options))).toBe("-8i");
+
       expect(printNode(simplify("(-8)^(1/3)", options))).not.toBe("-2");
     });
 
@@ -1081,6 +1083,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(z^4)", options))).toBe("(z^4)^(1/2)");
 
       expect(printNode(simplify("sqrt(-1)", options))).toBe("i");
+      expect(printNode(simplify("sqrt(-4)", options))).toBe("2i");
       expect(printNode(simplify("sqrt(-16)", options))).toBe("4i");
 
       expect(
