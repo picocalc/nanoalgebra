@@ -1,6 +1,6 @@
 import { ONE, ZERO } from "#lib/constants";
-import { makeTerm, negate, tryToFraction } from "#lib/convert";
-import type { BinaryNode, DefinedNode, TreeNode } from "#lib/nodes";
+import { negate, tryToFraction } from "#lib/convert";
+import type { DefinedNode, Modulo, TreeNode } from "#lib/nodes";
 import {
   Add,
   Divide,
@@ -86,7 +86,7 @@ export class Evaluator {
         if (args.length !== 1) return simplified;
         if (name === "abs") return this.evaluateAbs(args[0]);
         if (name === "sqrt") {
-          return this.simplify(new Power(args[0], new Fraction(1n, 2n)));
+          return this.power(args[0], new Fraction(1n, 2n));
         }
         if (name === "floor" || name === "ceil") {
           return this.evaluateFloorCeil(args[0], name);
@@ -94,12 +94,21 @@ export class Evaluator {
         return simplified;
       }
 
+      case "MULTIPLY":
+        return this.multiply(
+          this.simplify(node.left),
+          this.simplify(node.right),
+        );
+
+      case "POWER":
+        return this.power(this.simplify(node.left), this.simplify(node.right));
+
       default:
         return this.simplifyBinary(node);
     }
   }
 
-  private simplifyBinary(node: BinaryNode): TreeNode {
+  private simplifyBinary(node: Add | Subtract | Divide | Modulo): TreeNode {
     const left = this.simplify(node.left);
     const right = this.simplify(node.right);
     const simplified = rebuildBinary(node.type, left, right);
@@ -120,17 +129,6 @@ export class Evaluator {
         }
         if (isZero(right)) return left;
         return this.tryAddSubtractSymbolic(left, right, node.type);
-      }
-
-      case "MULTIPLY": {
-        if (isZero(left) || isZero(right)) return ZERO;
-        if (isOne(left)) return right;
-        if (isOne(right)) return left;
-        if (isNumerical(left) && isNumerical(right)) {
-          const evaluated = evaluateNumericMultiply(left, right);
-          if (evaluated) return evaluated;
-        }
-        return this.tryMultiplySymbolic(left, right) ?? simplified;
       }
 
       case "DIVIDE": {
@@ -157,46 +155,68 @@ export class Evaluator {
         }
         return simplified;
       }
-
-      case "POWER": {
-        const unpacked = this.unpackBase(left);
-        if (unpacked.abs && isOne(unpacked.exp) && isEvenInteger(right)) {
-          return this.simplify(new Power(unpacked.base, right));
-        }
-        if (isOne(right)) return left;
-        if (isZero(right) || isOne(left)) return ONE;
-        if (isZero(left)) {
-          if (this.domain.isPositive(right)) return left;
-          if (this.domain.isNegative(right)) return new Undefined(simplified);
-          return simplified;
-        }
-        if (
-          !this.domain.complex &&
-          isEvenRoot(right) &&
-          (isNegativeNumber(left) || this.domain.of(left) === "negative")
-        ) {
-          return new Undefined(simplified);
-        }
-        if (isNumerical(left) && isNumerical(right)) {
-          if (this.domain.complex && isNegativeNumber(left)) {
-            const exp = tryToFraction(right);
-            if (exp && exp.denominator !== 1n) {
-              const mag = this.simplify(new Power(negate(left), right));
-              if (exp.denominator === 2n) {
-                const c = (exp.numerator & 3n) === 3n ? negate(mag) : mag;
-                return this.withCoeff(c, new SymbolNode("i"));
-              }
-              if (isNegativeOne(left)) return simplified;
-              return this.withCoeff(mag, new Power(new Integer(-1n), right));
-            }
-          }
-          const evaluated = evaluateNumericPower(left, right);
-          if (evaluated) return evaluated;
-        }
-        const expInt = tryGetIntegerValue(right);
-        return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
-      }
     }
+  }
+
+  private multiply(left: TreeNode, right: TreeNode): TreeNode {
+    const simplified = rebuildBinary("MULTIPLY", left, right);
+
+    if (left.type === "UNDEFINED" || right.type === "UNDEFINED") {
+      return new Undefined(simplified);
+    }
+
+    if (isZero(left) || isZero(right)) return ZERO;
+    if (isOne(left)) return right;
+    if (isOne(right)) return left;
+    if (isNumerical(left) && isNumerical(right)) {
+      const evaluated = evaluateNumericMultiply(left, right);
+      if (evaluated) return evaluated;
+    }
+    return this.tryMultiplySymbolic(left, right) ?? simplified;
+  }
+
+  private power(left: TreeNode, right: TreeNode): TreeNode {
+    const simplified = rebuildBinary("POWER", left, right);
+
+    if (left.type === "UNDEFINED" || right.type === "UNDEFINED") {
+      return new Undefined(simplified);
+    }
+    const unpacked = this.unpackBase(left);
+    if (unpacked.abs && isOne(unpacked.exp) && isEvenInteger(right)) {
+      return this.power(unpacked.base, right);
+    }
+    if (isOne(right)) return left;
+    if (isZero(right) || isOne(left)) return ONE;
+    if (isZero(left)) {
+      if (this.domain.isPositive(right)) return left;
+      if (this.domain.isNegative(right)) return new Undefined(simplified);
+      return simplified;
+    }
+    if (
+      !this.domain.complex &&
+      isEvenRoot(right) &&
+      (isNegativeNumber(left) || this.domain.of(left) === "negative")
+    ) {
+      return new Undefined(simplified);
+    }
+    if (isNumerical(left) && isNumerical(right)) {
+      if (this.domain.complex && isNegativeNumber(left)) {
+        const exp = tryToFraction(right);
+        if (exp && exp.denominator !== 1n) {
+          const mag = this.power(negate(left), right);
+          if (exp.denominator === 2n) {
+            const c = (exp.numerator & 3n) === 3n ? negate(mag) : mag;
+            return this.multiply(c, new SymbolNode("i"));
+          }
+          if (isNegativeOne(left)) return simplified;
+          return this.multiply(mag, new Power(new Integer(-1n), right));
+        }
+      }
+      const evaluated = evaluateNumericPower(left, right);
+      if (evaluated) return evaluated;
+    }
+    const expInt = tryGetIntegerValue(right);
+    return this.tryExponentiateSymbolic(left, right, expInt) ?? simplified;
   }
 
   private evaluateAbs(node: TreeNode): TreeNode {
@@ -211,7 +231,7 @@ export class Evaluator {
       );
       if (!isOne(coeff) || nonUnitFactors.length < factors.length) {
         if (nonUnitFactors.length === 0) return this.evaluateAbs(coeff);
-        return this.withCoeff(
+        return this.multiply(
           this.evaluateAbs(coeff),
           this.evaluateAbs(this.multiplyAll(nonUnitFactors)),
         );
@@ -255,16 +275,16 @@ export class Evaluator {
   private buildSum(terms: readonly Term[]): TreeNode {
     const [first, ...rest] = terms;
     if (!first) return ZERO;
-    return this.appendTerms(this.withCoeff(first.coeff, first.body), rest);
+    return this.appendTerms(this.multiply(first.coeff, first.body), rest);
   }
 
   private appendTerms(initial: TreeNode, terms: readonly Term[]): TreeNode {
     let acc = initial;
     for (const term of terms) {
       if (isNegativeNumber(term.coeff)) {
-        acc = new Subtract(acc, this.withCoeff(negate(term.coeff), term.body));
+        acc = new Subtract(acc, this.multiply(negate(term.coeff), term.body));
       } else {
-        acc = new Add(acc, this.withCoeff(term.coeff, term.body));
+        acc = new Add(acc, this.multiply(term.coeff, term.body));
       }
     }
     return acc;
@@ -299,12 +319,8 @@ export class Evaluator {
     return this.buildSum(terms.filter((t) => !isZero(t.coeff)));
   }
 
-  private withCoeff(coeff: TreeNode, body: TreeNode): TreeNode {
-    return this.simplify(makeTerm(coeff, body));
-  }
-
   private multiplyAll(nodes: readonly TreeNode[]): TreeNode {
-    return nodes.reduce((acc, f) => this.simplify(new Multiply(acc, f)), ONE);
+    return nodes.reduce((acc, f) => this.multiply(acc, f), ONE);
   }
 
   private unpackBase(node: TreeNode) {
@@ -325,7 +341,7 @@ export class Evaluator {
       !(this.domain.isReal(base) && isEvenInteger(exp))
         ? new FunctionCall("abs", [base])
         : base;
-    return this.simplify(new Power(target, exp));
+    return this.power(target, exp);
   }
 
   private combineFactors(
@@ -403,9 +419,7 @@ export class Evaluator {
           if (!f1 || !f2 || !fTotal) return null;
           const rootDenom = lcm(f1.denominator, f2.denominator);
           const outerExp = (fTotal.numerator * rootDenom) / fTotal.denominator;
-          const rootNode = this.simplify(
-            new Power(a.base, new Fraction(1n, rootDenom)),
-          );
+          const rootNode = this.power(a.base, new Fraction(1n, rootDenom));
           return [new Power(rootNode, new Integer(outerExp))];
         }
         return isZero(totalExp) ? [] : [this.packBase(a.base, totalExp, a.abs)];
@@ -442,7 +456,7 @@ export class Evaluator {
         ? evaluateNumericDivide(a.base, b.base)
         : evaluateNumericMultiply(a.base, b.base);
       if (!combinedBase) return null;
-      return [this.simplify(new Power(combinedBase, a.exp))];
+      return [this.power(combinedBase, a.exp)];
     }
 
     return null;
@@ -482,7 +496,7 @@ export class Evaluator {
     ) {
       return this.buildSum(extractTerms(body, true));
     }
-    return makeTerm(coeff, body);
+    return new Multiply(coeff, body);
   }
 
   private tryDivideSymbolic(
@@ -506,14 +520,14 @@ export class Evaluator {
       if (!coeff) return null;
 
       const { base, exp } = getBaseAndExp(factor);
-      return this.withCoeff(coeff, this.simplify(new Power(base, negate(exp))));
+      return this.multiply(coeff, this.power(base, this.simplify(negate(exp))));
     }
 
     if (den.factors.length === 0) {
       const coeff = evaluateNumericDivide(num.coeff, den.coeff);
       if (!coeff) return null;
 
-      return this.withCoeff(coeff, num.body);
+      return this.multiply(coeff, num.body);
     }
 
     const { factors, remainingDen, changed } = this.combineFactors(
@@ -527,7 +541,7 @@ export class Evaluator {
     if (!combined) return null;
     if (isZero(combined)) return ZERO;
 
-    const numNode = this.withCoeff(combined, this.multiplyAll(factors));
+    const numNode = this.multiply(combined, this.multiplyAll(factors));
     return this.simplify(new Divide(numNode, this.multiplyAll(remainingDen)));
   }
 
@@ -552,7 +566,7 @@ export class Evaluator {
     if (left.type === "POWER") {
       const innerBase = left.left;
       const innerExp = left.right;
-      const newExp = this.simplify(new Multiply(innerExp, right));
+      const newExp = this.multiply(innerExp, right);
 
       if (
         this.domain.isReal(innerBase) &&
@@ -562,7 +576,7 @@ export class Evaluator {
         const base = this.domain.isPositive(innerBase)
           ? innerBase
           : this.simplify(new FunctionCall("abs", [innerBase]));
-        return this.simplify(new Power(base, newExp));
+        return this.power(base, newExp);
       }
 
       if (
@@ -574,7 +588,7 @@ export class Evaluator {
         return null;
       }
 
-      return this.simplify(new Power(innerBase, newExp));
+      return this.power(innerBase, newExp);
     }
 
     if (left.type === "MULTIPLY" && isNumerical(right)) {
@@ -604,16 +618,14 @@ export class Evaluator {
         let simplifiedAny = expInt !== null;
         const powered = splittable.map((f) => {
           const raw = new Power(f, right);
-          const res = this.simplify(raw);
+          const res = this.power(f, right);
           if (!isEqual(res, raw)) simplifiedAny = true;
           return res;
         });
 
         if (simplifiedAny) {
           if (remaining.length > 0) {
-            powered.push(
-              this.simplify(new Power(this.multiplyAll(remaining), right)),
-            );
+            powered.push(this.power(this.multiplyAll(remaining), right));
           }
           return this.multiplyAll(powered);
         }

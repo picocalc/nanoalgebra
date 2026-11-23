@@ -1,7 +1,7 @@
 import { ZERO } from "./constants";
 import type { NumericalNode, TreeNode } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
-import { isAbovePowThreshold, isNegativeNumber, isOne, isZero } from "./shared";
+import { isAbovePowThreshold, isNegativeNumber } from "./shared";
 
 export function negate(node: NumericalNode): NumericalNode;
 export function negate(node: TreeNode): TreeNode;
@@ -64,11 +64,4 @@ export function alignDecimals(
     c2: d2.whole * 10n ** (d2.exponent - exp),
     exp,
   };
-}
-
-export function makeTerm(coeff: TreeNode, body: TreeNode): TreeNode {
-  if (isZero(coeff)) return ZERO;
-  if (isOne(coeff)) return body;
-  if (isOne(body)) return coeff;
-  return new Multiply(coeff, body);
 }
