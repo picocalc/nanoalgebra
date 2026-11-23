@@ -331,7 +331,7 @@ export class Evaluator {
   private combineFactors(
     leftFactors: readonly TreeNode[],
     rightFactors: readonly TreeNode[],
-    isDivide: boolean = false,
+    isDivide = false,
   ): { factors: TreeNode[]; remainingDen: TreeNode[]; changed: boolean } {
     const used = Array.from<boolean>({ length: rightFactors.length }).fill(
       false,
@@ -340,97 +340,20 @@ export class Evaluator {
     let changed = false;
 
     for (const leftFactor of leftFactors) {
-      const a = this.unpackBase(leftFactor);
       let matched = false;
-
       for (const [j, rightFactor] of rightFactors.entries()) {
         if (used[j]) continue;
-        const b = this.unpackBase(rightFactor);
-
-        if (isEqual(a.base, b.base)) {
-          const bExp = isDivide ? negate(b.exp) : b.exp;
-
-          if (a.abs === b.abs) {
-            if (
-              !a.abs &&
-              (isZero(a.base) ||
-                (!this.domain.complex &&
-                  !this.domain.isPositive(a.base) &&
-                  (!isNumerical(a.exp) || !isNumerical(b.exp))))
-            ) {
-              continue;
-            }
-            const totalExp = this.simplify(new Add(a.exp, bExp));
-            if (
-              !a.abs &&
-              this.domain.losesEvenRoot(a.base, totalExp, a.exp, b.exp)
-            ) {
-              if (
-                !isNumerical(a.exp) ||
-                !isNumerical(b.exp) ||
-                !isNumerical(totalExp)
-              ) {
-                continue;
-              }
-              const f1 = tryToFraction(a.exp);
-              const f2 = tryToFraction(b.exp);
-              const fTotal = tryToFraction(totalExp);
-              if (!f1 || !f2 || !fTotal) continue;
-              used[j] = true;
-              const rootDenom = lcm(f1.denominator, f2.denominator);
-              const outerExp =
-                (fTotal.numerator * rootDenom) / fTotal.denominator;
-              const rootNode = this.simplify(
-                new Power(a.base, new Fraction(1n, rootDenom)),
-              );
-              factors.push(new Power(rootNode, new Integer(outerExp)));
-            } else {
-              used[j] = true;
-              if (!isZero(totalExp)) {
-                factors.push(this.packBase(a.base, totalExp, a.abs));
-              }
-            }
-            changed = matched = true;
-            break;
-          }
-
-          const [uExp, absExp] = a.abs ? [bExp, a.exp] : [a.exp, bExp];
-          const n = tryGetIntegerValue(uExp);
-          const rem = n !== null ? n % 2n : 0n;
-          const even = n !== null ? n - rem : 0n;
-          if (even === 0n) continue;
-
-          used[j] = true;
-          const totalAbs = this.simplify(new Add(new Integer(even), absExp));
-          if (rem !== 0n) {
-            factors.push(this.packBase(a.base, new Integer(rem), false));
-          }
-          if (!isZero(totalAbs)) {
-            factors.push(this.packBase(a.base, totalAbs, true));
-          }
-          changed = matched = true;
-          break;
-        } else if (
-          isNumerical(a.base) &&
-          isNumerical(b.base) &&
-          (!this.domain.isInteger(a.exp) || isOne(a.exp)) &&
-          isEqual(a.exp, b.exp) &&
-          !(isDivide && isZero(b.base)) &&
-          (isOne(a.exp) ||
-            (!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
-            (!this.domain.complex && isNumerical(a.exp) && !isEvenRoot(a.exp)))
-        ) {
-          const combinedBase = isDivide
-            ? evaluateNumericDivide(a.base, b.base)
-            : evaluateNumericMultiply(a.base, b.base);
-          if (!combinedBase) continue;
-          used[j] = true;
-          factors.push(this.simplify(new Power(combinedBase, a.exp)));
-          changed = matched = true;
-          break;
-        }
+        const merged = this.tryMergeFactorPair(
+          leftFactor,
+          rightFactor,
+          isDivide,
+        );
+        if (!merged) continue;
+        used[j] = true;
+        factors.push(...merged);
+        changed = matched = true;
+        break;
       }
-
       if (!matched) factors.push(leftFactor);
     }
 
@@ -439,6 +362,90 @@ export class Evaluator {
       if (!used[j]) (isDivide ? remainingDen : factors).push(rightFactor);
     }
     return { factors, remainingDen, changed };
+  }
+
+  private tryMergeFactorPair(
+    leftFactor: TreeNode,
+    rightFactor: TreeNode,
+    isDivide: boolean,
+  ): TreeNode[] | null {
+    const a = this.unpackBase(leftFactor);
+    const b = this.unpackBase(rightFactor);
+
+    if (isEqual(a.base, b.base)) {
+      const bExp = isDivide ? negate(b.exp) : b.exp;
+
+      if (a.abs === b.abs) {
+        if (
+          !a.abs &&
+          (isZero(a.base) ||
+            (!this.domain.complex &&
+              !this.domain.isPositive(a.base) &&
+              (!isNumerical(a.exp) || !isNumerical(b.exp))))
+        ) {
+          return null;
+        }
+        const totalExp = this.simplify(new Add(a.exp, bExp));
+        if (
+          !a.abs &&
+          this.domain.losesEvenRoot(a.base, totalExp, a.exp, b.exp)
+        ) {
+          if (
+            !isNumerical(a.exp) ||
+            !isNumerical(b.exp) ||
+            !isNumerical(totalExp)
+          ) {
+            return null;
+          }
+          const f1 = tryToFraction(a.exp);
+          const f2 = tryToFraction(b.exp);
+          const fTotal = tryToFraction(totalExp);
+          if (!f1 || !f2 || !fTotal) return null;
+          const rootDenom = lcm(f1.denominator, f2.denominator);
+          const outerExp = (fTotal.numerator * rootDenom) / fTotal.denominator;
+          const rootNode = this.simplify(
+            new Power(a.base, new Fraction(1n, rootDenom)),
+          );
+          return [new Power(rootNode, new Integer(outerExp))];
+        }
+        return isZero(totalExp) ? [] : [this.packBase(a.base, totalExp, a.abs)];
+      }
+
+      const [uExp, absExp] = a.abs ? [bExp, a.exp] : [a.exp, bExp];
+      const n = tryGetIntegerValue(uExp);
+      const rem = n !== null ? n % 2n : 0n;
+      const even = n !== null ? n - rem : 0n;
+      if (even === 0n) return null;
+
+      const totalAbs = this.simplify(new Add(new Integer(even), absExp));
+      const merged: TreeNode[] = [];
+      if (rem !== 0n) {
+        merged.push(this.packBase(a.base, new Integer(rem), false));
+      }
+      if (!isZero(totalAbs)) {
+        merged.push(this.packBase(a.base, totalAbs, true));
+      }
+      return merged;
+    }
+
+    if (
+      isNumerical(a.base) &&
+      isNumerical(b.base) &&
+      (!this.domain.isInteger(a.exp) || isOne(a.exp)) &&
+      isEqual(a.exp, b.exp) &&
+      !(isDivide && isZero(b.base)) &&
+      (isOne(a.exp) ||
+        (!isNegativeNumber(a.base) && !isNegativeNumber(b.base)) ||
+        (!this.domain.complex && isNumerical(a.exp) && !isEvenRoot(a.exp)))
+    ) {
+      const combinedBase = isDivide
+        ? evaluateNumericDivide(a.base, b.base)
+        : evaluateNumericMultiply(a.base, b.base);
+      if (!combinedBase) return null;
+      return [this.simplify(new Power(combinedBase, a.exp))];
+    }
+
+    return null;
   }
 
   private tryMultiplySymbolic(
