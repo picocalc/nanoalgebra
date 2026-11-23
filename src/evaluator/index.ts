@@ -1,10 +1,5 @@
 import { ONE, ZERO } from "#lib/constants";
-import {
-  negate,
-  normalizeDecimal,
-  normalizeFraction,
-  tryToFraction,
-} from "#lib/convert";
+import { negate, tryToFraction } from "#lib/convert";
 import type {
   BinaryNode,
   DefinedNode,
@@ -24,7 +19,6 @@ import {
   Undefined,
 } from "#lib/nodes";
 import {
-  isAbovePowThreshold,
   isEqual,
   isEvenInteger,
   isEvenRoot,
@@ -35,7 +29,6 @@ import {
   isZero,
   tryGetIntegerValue,
 } from "#lib/shared";
-import { iNthRoot } from "#math/iroot";
 import { lcm } from "#math/lcm";
 import { mergeMapWithDefaults } from "#utils/merge";
 
@@ -46,6 +39,7 @@ import {
   evaluateNumericFloorCeil,
   evaluateNumericMod,
   evaluateNumericMultiply,
+  evaluateNumericPower,
   evaluatePowerMod,
 } from "./numeric";
 
@@ -199,7 +193,19 @@ export class Evaluator {
           return new Undefined(simplified);
         }
         if (isNumerical(left) && isNumerical(right)) {
-          const evaluated = this.evaluateNumericPower(left, right);
+          if (this.complex && isNegativeNumber(left)) {
+            const exp = tryToFraction(right);
+            if (exp && exp.denominator !== 1n) {
+              if (exp.denominator === 2n) {
+                const mag = this.simplify(new Power(negate(left), right));
+                return this.withCoeff(mag, new SymbolNode("i"));
+              }
+              if (isNegativeOne(left)) return simplified;
+              const mag = this.simplify(new Power(negate(left), right));
+              return this.withCoeff(mag, new Power(new Integer(-1n), right));
+            }
+          }
+          const evaluated = evaluateNumericPower(left, right);
           if (evaluated) return evaluated;
         }
         const expInt = tryGetIntegerValue(right);
@@ -779,87 +785,5 @@ export class Evaluator {
     }
 
     return null;
-  }
-
-  private evaluateNumericPower(
-    left: NumericalNode,
-    right: NumericalNode,
-  ): TreeNode | null {
-    const exp = tryToFraction(right);
-    if (!exp) return null;
-    if (exp.denominator === 1n) {
-      return this.evaluatePower(left, exp.numerator);
-    }
-
-    const base = tryToFraction(left);
-    if (!base) return null;
-
-    const isNegBase = base.numerator < 0n;
-    if (isNegBase) {
-      if (!this.complex) {
-        if (exp.denominator % 2n === 0n) return null;
-      } else {
-        if (exp.denominator === 2n) {
-          const mag = this.simplify(new Power(negate(left), right));
-          const rem = exp.numerator & 3n;
-          const signedMag = rem === 3n ? this.simplify(negate(mag)) : mag;
-          return this.withCoeff(signedMag, new SymbolNode("i"));
-        }
-
-        if (isNegativeOne(left)) return null;
-        const mag = this.simplify(new Power(negate(left), right));
-        return this.withCoeff(mag, new Power(new Integer(-1n), right));
-      }
-    }
-
-    const absNum = isNegBase ? -base.numerator : base.numerator;
-    const rootNum = iNthRoot(absNum, exp.denominator);
-    if (rootNum === null) return null;
-
-    const rootDen = iNthRoot(base.denominator, exp.denominator);
-    if (rootDen === null) return null;
-
-    const root = normalizeFraction(isNegBase ? -rootNum : rootNum, rootDen);
-    return exp.numerator === 1n
-      ? root
-      : this.evaluatePower(root, exp.numerator);
-  }
-
-  private evaluatePower(
-    base: NumericalNode,
-    exp: bigint,
-  ): NumericalNode | Power {
-    if (exp > 0n) {
-      if (base.type === "INTEGER") {
-        return isAbovePowThreshold(base.value, exp)
-          ? new Power(base, new Integer(exp))
-          : new Integer(base.value ** exp);
-      }
-      if (base.type === "DECIMAL") {
-        if (isAbovePowThreshold(base.whole, exp)) {
-          return new Power(base, new Integer(exp));
-        }
-        return normalizeDecimal(base.whole ** exp, base.exponent * exp);
-      }
-    }
-
-    if (base.type === "DECIMAL" && (base.whole === 1n || base.whole === -1n)) {
-      return normalizeDecimal(
-        base.whole ** (exp < 0n ? -exp : exp),
-        base.exponent * exp,
-      );
-    }
-
-    const f = tryToFraction(base);
-    if (!f) return new Power(base, new Integer(exp));
-
-    const [num, den, e] =
-      exp > 0n
-        ? [f.numerator, f.denominator, exp]
-        : [f.denominator, f.numerator, -exp];
-
-    return isAbovePowThreshold(num, e) || isAbovePowThreshold(den, e)
-      ? new Power(base, new Integer(exp))
-      : normalizeFraction(num ** e, den ** e);
   }
 }

@@ -6,9 +6,10 @@ import {
   toDecimal,
   tryToFraction,
 } from "#lib/convert";
-import type { Decimal, Fraction, NumericalNode, Power } from "#lib/nodes";
-import { FunctionCall, Integer } from "#lib/nodes";
+import type { Decimal, Fraction, NumericalNode } from "#lib/nodes";
+import { FunctionCall, Integer, Power } from "#lib/nodes";
 import { isAbovePowThreshold, tryGetIntegerValue } from "#lib/shared";
+import { iNthRoot } from "#math/iroot";
 import { floorMod, modPow } from "#math/modulo";
 
 export function evaluateNumericFloorCeil(
@@ -171,4 +172,71 @@ export function evaluatePowerMod(
 
   const rem = modPow(b, exp, m);
   return new Integer(floorMod(rem, mod));
+}
+
+function evaluateIntegerPower(
+  base: NumericalNode,
+  exp: bigint,
+): NumericalNode | Power {
+  if (exp > 0n) {
+    if (base.type === "INTEGER") {
+      return isAbovePowThreshold(base.value, exp)
+        ? new Power(base, new Integer(exp))
+        : new Integer(base.value ** exp);
+    }
+    if (base.type === "DECIMAL") {
+      if (isAbovePowThreshold(base.whole, exp)) {
+        return new Power(base, new Integer(exp));
+      }
+      return normalizeDecimal(base.whole ** exp, base.exponent * exp);
+    }
+  }
+
+  if (base.type === "DECIMAL" && (base.whole === 1n || base.whole === -1n)) {
+    return normalizeDecimal(
+      base.whole ** (exp < 0n ? -exp : exp),
+      base.exponent * exp,
+    );
+  }
+
+  const f = tryToFraction(base);
+  if (!f) return new Power(base, new Integer(exp));
+
+  const [num, den, e] =
+    exp > 0n
+      ? [f.numerator, f.denominator, exp]
+      : [f.denominator, f.numerator, -exp];
+
+  return isAbovePowThreshold(num, e) || isAbovePowThreshold(den, e)
+    ? new Power(base, new Integer(exp))
+    : normalizeFraction(num ** e, den ** e);
+}
+
+export function evaluateNumericPower(
+  left: NumericalNode,
+  right: NumericalNode,
+): NumericalNode | Power | null {
+  const exp = tryToFraction(right);
+  if (!exp) return null;
+  if (exp.denominator === 1n) {
+    return evaluateIntegerPower(left, exp.numerator);
+  }
+
+  const base = tryToFraction(left);
+  if (!base) return null;
+
+  const isNegBase = base.numerator < 0n;
+  if (isNegBase && exp.denominator % 2n === 0n) return null;
+
+  const absNum = isNegBase ? -base.numerator : base.numerator;
+  const rootNum = iNthRoot(absNum, exp.denominator);
+  if (rootNum === null) return null;
+
+  const rootDen = iNthRoot(base.denominator, exp.denominator);
+  if (rootDen === null) return null;
+
+  const root = normalizeFraction(isNegBase ? -rootNum : rootNum, rootDen);
+  return exp.numerator === 1n
+    ? root
+    : evaluateIntegerPower(root, exp.numerator);
 }
