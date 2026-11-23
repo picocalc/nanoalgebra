@@ -321,6 +321,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("1^(2/3)"))).toBe("1");
       expect(printNode(simplify("1^(-2/3)"))).toBe("1");
       expect(printNode(simplify("1 ^ 1e100"))).toBe("1");
+      expect(printNode(simplify("1 ^ (10^1e10)"))).toBe("1");
     });
 
     it("handles exponentiation to 0th power", () => {
@@ -328,6 +329,7 @@ describe("evaluate", () => {
       expect(printNode(simplify("(1/3)^0"))).toBe("1");
       expect(printNode(simplify("(2/3)^0"))).toBe("1");
       expect(printNode(simplify("1e100^0"))).toBe("1");
+      expect(printNode(simplify("(10^1e10)^0"))).toBe("1");
     });
 
     it("handles exponentiation to 1st power", () => {
@@ -346,6 +348,14 @@ describe("evaluate", () => {
       expect(printNode(simplify("2 ^ (5^10)"))).toBe("2^9765625");
       expect(printNode(simplify("5 ^ (5^10)"))).toBe("5^9765625");
       expect(printNode(simplify("10 ^ (10^10)"))).toBe("10^10000000000");
+
+      expect(printNode(simplify("(10^2e4)^10"))).toBe("10^200000");
+      expect(printNode(simplify("(10^1e5)^2"))).toBe("10^200000");
+      expect(printNode(simplify("(10^2e5)"))).toBe("10^200000");
+      expect(printNode(simplify("(10^5e4)^10"))).toBe("10^500000");
+      expect(printNode(simplify("(10^2e5)^2"))).toBe("10^400000");
+      expect(printNode(simplify("(10^2e5)^10"))).toBe("10^2000000");
+      expect(printNode(simplify("(10^2e5)^1e3"))).toBe("10^200000000");
 
       expect(printNode(simplify("2.5 ^ (5^10)"))).toBe("2.5^9765625");
 
@@ -413,6 +423,20 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(10 ^ 10^10)"))).toBe("10^5000000000");
       expect(printNode(simplify("(10^1e10)^1e-9"))).toBe("10000000000");
       expect(printNode(simplify("(10^1e10)^1e-10"))).toBe("10");
+    });
+
+    it("handles further operations with large numbers", () => {
+      expect(printNode(simplify("0 * (10^1e10)"))).toBe("0");
+      expect(printNode(simplify("-10^10^10"))).toBe("-10^10000000000");
+      expect(printNode(simplify("abs(10^10^10)"))).toBe("10^10000000000");
+      expect(printNode(simplify("ceil(10^10^10)"))).toBe("10^10000000000");
+      expect(printNode(simplify("floor(10^10^10)"))).toBe("10^10000000000");
+      expect(printNode(simplify("(10^10^10) + 1"))).toBe("10^10000000000 + 1");
+      expect(printNode(simplify("(10^10^10) ^ 10"))).toBe("10^100000000000");
+      expect(printNode(simplify("10 ^ (10^10^10)"))).toBe("10^10^10000000000");
+      expect(printNode(simplify("10^10^10^10 % 9^9^9^9"))).toBe(
+        "10^10^10000000000 % 9^9^387420489",
+      );
     });
 
     it("handles exponentiation of negatives to a fractional power", () => {
