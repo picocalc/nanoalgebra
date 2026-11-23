@@ -822,8 +822,10 @@ describe("evaluate", () => {
 
   describe("functions", () => {
     it("handles sqrt function", () => {
+      expect(printNode(simplify("sqrt(pi)"))).toBe("pi^(1/2)");
       expect(printNode(simplify("sqrt(pi^2)"))).toBe("pi");
       expect(printNode(simplify("sqrt(pi)^2"))).toBe("pi");
+      expect(printNode(simplify("sqrt(pi) * pi"))).toBe("pi^(3/2)");
 
       expect(printNode(simplify("sqrt(2) * sqrt(2)"))).toBe("2");
       expect(printNode(simplify("sqrt(2)^2"))).toBe("2");
