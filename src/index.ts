@@ -1,6 +1,6 @@
+import type { EvaluatorOptions } from "#evaluator";
+import { constants, Evaluator } from "#evaluator";
 import { AlgebraError } from "#lib/errors";
-import type { EvaluatorOptions } from "#lib/evaluator";
-import { constants, Evaluator } from "#lib/evaluator";
 import { tokenize } from "#lib/lexer";
 import type { TreeNode } from "#lib/nodes";
 import type { ParserOptions } from "#lib/parser";

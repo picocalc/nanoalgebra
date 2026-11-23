@@ -52,3 +52,16 @@ export function normalizeFraction(n: bigint, d: bigint): Integer | Fraction {
   const frac = new Fraction(n, d);
   return frac.denominator === 1n ? new Integer(frac.numerator) : frac;
 }
+
+export function alignDecimals(
+  d1: Decimal,
+  d2: Decimal,
+): { c1: bigint; c2: bigint; exp: bigint } | null {
+  if (isAbovePowThreshold(10n, d1.exponent - d2.exponent)) return null;
+  const exp = d1.exponent < d2.exponent ? d1.exponent : d2.exponent;
+  return {
+    c1: d1.whole * 10n ** (d1.exponent - exp),
+    c2: d2.whole * 10n ** (d2.exponent - exp),
+    exp,
+  };
+}

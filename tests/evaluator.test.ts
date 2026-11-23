@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 
-import type { EvaluatorOptions } from "#lib/evaluator";
+import type { EvaluatorOptions } from "#evaluator";
 import type { ParserOptions } from "#lib/parser";
 import { printNode } from "#lib/printer";
 import { simplify } from "#src";

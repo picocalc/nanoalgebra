@@ -1,5 +1,5 @@
-import type { BinaryOpType, DefinedNode, TreeNode } from "./nodes";
-import { Add, Divide, Modulo, Multiply, Power, Subtract } from "./nodes";
+import type { BinaryOpType, DefinedNode, TreeNode } from "#lib/nodes";
+import { Add, Divide, Modulo, Multiply, Power, Subtract } from "#lib/nodes";
 
 export function rebuildBinary(
   type: BinaryOpType,
