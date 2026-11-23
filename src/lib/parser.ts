@@ -1,6 +1,9 @@
 import { AlgebraError } from "#lib/errors";
 import type { Token } from "#lib/lexer";
+import { mergeSetWithDefaults } from "#utils/merge";
 
+import { ZERO } from "./constants";
+import { negate } from "./convert";
 import type { TreeNode } from "./nodes";
 import {
   Add,
@@ -15,7 +18,6 @@ import {
   SymbolNode,
   Undefined,
 } from "./nodes";
-import { negate } from "./shared";
 
 export class ParserError extends AlgebraError {
   constructor(message: string, pos: number) {
@@ -36,11 +38,14 @@ export const functions: ReadonlySet<string> = new Set([
 
 export class Parser {
   private current: number = 0;
+  private readonly functions: ReadonlySet<string>;
 
   constructor(
     readonly tokens: Token[],
-    readonly options: Readonly<ParserOptions> = { functions },
-  ) {}
+    options: Readonly<ParserOptions> = {},
+  ) {
+    this.functions = mergeSetWithDefaults(functions, options.functions);
+  }
 
   private peek(): Token | undefined {
     return this.tokens[this.current];
@@ -115,17 +120,18 @@ export class Parser {
     if (token.type === "NUMBER") {
       this.consume(token);
 
-      if (token.fraction !== undefined || token.exponent !== undefined) {
-        const wholePart = token.whole === "" ? "0" : token.whole;
-        const fracPart = token.fraction ?? "";
-        const combinedCoeff = BigInt(wholePart + fracPart);
+      const frac = token.fraction?.replace(/0+$/, "") ?? "";
 
-        let exp = -BigInt(fracPart.length);
-        if (token.exponent !== undefined) {
+      if (frac.length || token.exponent) {
+        const coeff = BigInt(token.whole + frac);
+        if (coeff === 0n) return ZERO;
+
+        let exp = -BigInt(frac.length);
+        if (token.exponent) {
           exp += BigInt(token.exponent);
         }
 
-        return new Decimal(combinedCoeff, exp);
+        return new Decimal(coeff, exp);
       }
 
       return new Integer(token.whole);
@@ -138,7 +144,7 @@ export class Parser {
         return new Undefined(new SymbolNode(token.id));
       }
 
-      if (this.options.functions?.has(token.id)) {
+      if (this.functions.has(token.id)) {
         return this.parseFunctionCall(token.id, token.pos);
       }
 
@@ -186,13 +192,11 @@ export class Parser {
         (token.type === "NUMBER" &&
           (prev?.type === "RPAREN" || prev?.type === "LPAREN"));
 
-      if (canImplicitMultiply) {
-        const right = this.parseExponent();
-        prev = undefined;
-        left = new Multiply(left, right);
-      } else {
-        break;
-      }
+      if (!canImplicitMultiply) break;
+
+      const right = this.parseExponent();
+      prev = undefined;
+      left = new Multiply(left, right);
     }
 
     return left;

@@ -1,18 +1,19 @@
 import { describe, it, expect } from "bun:test";
 
 import type { ParserOptions } from "#lib/parser";
+import { printNode } from "#lib/printer";
 import { parse } from "#src";
 
 function testPrint(expression: string, options?: ParserOptions) {
   const parsed = parse(expression, options);
-  const printed = parsed.print();
+  const printed = printNode(parsed);
   const stringified = parsed.toString();
   expect(parse(printed, options).toString()).toBe(stringified);
   expect(parse(stringified, options).toString()).toBe(stringified);
   return expect(printed);
 }
 
-describe(".print() and .toString()", () => {
+describe("printNode and .toString()", () => {
   it("handles unary negation", () => {
     testPrint("-1").toMatchInlineSnapshot(`"-1"`);
     testPrint("-2.5").toMatchInlineSnapshot(`"-2.5"`);

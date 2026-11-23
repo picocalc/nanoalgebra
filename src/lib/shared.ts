@@ -1,25 +1,6 @@
 import { powBitLength } from "bigint.bitlength";
 
 import type { NumericalNode, TreeNode } from "./nodes";
-import { Decimal, Fraction, Integer, Multiply } from "./nodes";
-
-export function negate(node: NumericalNode): NumericalNode;
-export function negate(node: TreeNode): TreeNode;
-export function negate(node: TreeNode): TreeNode {
-  if (node.type === "UNDEFINED") return node;
-  if (node.type === "INTEGER") return new Integer(-node.value);
-  if (node.type === "DECIMAL") return new Decimal(-node.whole, node.exponent);
-  if (node.type === "FRACTION")
-    return new Fraction(-node.numerator, node.denominator);
-  if (
-    node.type === "MULTIPLY" &&
-    isNegativeNumber(node.left) &&
-    node.left.type !== "UNDEFINED"
-  ) {
-    return new Multiply(negate(node.left), node.right);
-  }
-  return new Multiply(new Integer(-1), node);
-}
 
 export function isNegativeNumber(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value < 0n;
@@ -62,30 +43,6 @@ export function tryGetIntegerValue(node: TreeNode): bigint | null {
 export function isEvenInteger(node: TreeNode): boolean {
   const int = tryGetIntegerValue(node);
   return !(!int || int % 2n);
-}
-
-export function isInteger(node: TreeNode): boolean {
-  if (node.type === "INTEGER") return true;
-  if (node.type === "DECIMAL") return node.exponent >= 0;
-  if (
-    node.type === "FUNCTION" &&
-    (node.name === "floor" || node.name === "ceil") &&
-    node.args.length === 1
-  ) {
-    return true;
-  }
-  if (
-    node.type === "ADD" ||
-    node.type === "SUBTRACT" ||
-    node.type === "MULTIPLY"
-  ) {
-    return isInteger(node.left) && isInteger(node.right);
-  }
-  if (node.type === "POWER") {
-    const exp = tryGetIntegerValue(node.right);
-    return !!exp && isInteger(node.left);
-  }
-  return false;
 }
 
 function flattenOperands(
