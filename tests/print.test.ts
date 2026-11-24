@@ -58,6 +58,26 @@ describe("printNode and .toString()", () => {
     testPrint("1 ^ 1").toMatchInlineSnapshot(`"1^1"`);
   });
 
+  it("handles scientific notation", () => {
+    testPrint("1e2").toMatchInlineSnapshot(`"100"`);
+    testPrint("1e-2").toMatchInlineSnapshot(`"0.01"`);
+
+    testPrint("2e2").toMatchInlineSnapshot(`"200"`);
+    testPrint("2e-2").toMatchInlineSnapshot(`"0.02"`);
+
+    testPrint("2e200000").toMatchInlineSnapshot(`"2e200000"`);
+    testPrint("2e-200000").toMatchInlineSnapshot(`"2e-200000"`);
+
+    testPrint("-1e2").toMatchInlineSnapshot(`"-100"`);
+    testPrint("-1e-2").toMatchInlineSnapshot(`"-0.01"`);
+
+    testPrint("-2e2").toMatchInlineSnapshot(`"-200"`);
+    testPrint("-2e-2").toMatchInlineSnapshot(`"-0.02"`);
+
+    testPrint("-2e200000").toMatchInlineSnapshot(`"-2e200000"`);
+    testPrint("-2e-200000").toMatchInlineSnapshot(`"-2e-200000"`);
+  });
+
   it("handles expressions with multiple operators", () => {
     testPrint("1 + 2 - 3").toMatchInlineSnapshot(`"1 + 2 - 3"`);
     testPrint("1 + 2 + 3").toMatchInlineSnapshot(`"1 + 2 + 3"`);

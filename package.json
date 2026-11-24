@@ -12,6 +12,7 @@
   "type": "module",
   "imports": {
     "#src": "./src/index.ts",
+    "#evaluator": "./src/evaluator/index.ts",
     "#lib/*": "./src/lib/*.ts",
     "#utils/*": "./src/utils/*.ts",
     "#math/*": "./src/math/*.ts"
