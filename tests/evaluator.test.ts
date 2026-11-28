@@ -871,6 +871,10 @@ describe("evaluate", () => {
         "1",
       );
     });
+
+    it("handles division with multiplications", () => {
+      expect(printNode(simplify("2^x / 3^x"))).toBe("(2/3)^x");
+    });
   });
 
   describe("functions", () => {
@@ -895,6 +899,15 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(x) / sqrt(x)^-1"))).toBe("(x^(1/2))^2");
 
       expect(printNode(simplify("(1 / sqrt(x)) * sqrt(x)"))).toBe("1");
+
+      expect(printNode(simplify("sqrt(2) + sqrt(8)"))).toBe("3 * 2^(1/2)");
+      expect(printNode(simplify("sqrt(2) + sqrt(8) - 3sqrt(2)"))).toBe("0");
+      expect(printNode(simplify("sqrt(2) * (sqrt(2) + sqrt(8))"))).toBe("6");
+      expect(printNode(simplify("(sqrt(2) + sqrt(8))^2"))).toBe("18");
+
+      expect(printNode(simplify("sqrt(20) + sqrt(45)"))).toBe("5 * 5^(1/2)");
+      expect(printNode(simplify("sqrt(50)"))).toBe("5 * 2^(1/2)");
+      expect(printNode(simplify("sqrt(539)"))).toBe("7 * 11^(1/2)");
     });
 
     it("handles abs function", () => {
@@ -1068,8 +1081,10 @@ describe("evaluate", () => {
     });
 
     it("handles exponentiation in complex domain", () => {
-      expect(printNode(simplify("(-z)^2"))).toBe("z^2");
-      expect(printNode(simplify("(-z)^3"))).toBe("-z^3");
+      expect(printNode(simplify("(-z)^2", options))).toBe("z^2");
+      expect(printNode(simplify("(-z)^3", options))).toBe("-z^3");
+
+      expect(printNode(simplify("0^z * 0^-z", options))).not.toBe("1");
     });
 
     it("handles fractional exponents in complex domain", () => {
