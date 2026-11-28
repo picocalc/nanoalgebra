@@ -1177,7 +1177,16 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(-i)", options))).toBe("1");
       expect(printNode(simplify("abs(2i)", options))).toBe("2");
       expect(printNode(simplify("abs(-2i)", options))).toBe("2");
-      expect(printNode(simplify("abs(3 + 4i)", options))).not.toBe("7");
+
+      expect(printNode(simplify("abs(3 + 4i)", options))).toBe("5");
+      expect(printNode(simplify("abs(3 - 4i)", options))).toBe("5");
+      expect(printNode(simplify("abs(4i - 3)", options))).toBe("5");
+
+      expect(printNode(simplify("abs(sqrt(3) + i)", options))).toBe("2");
+      expect(printNode(simplify("abs(sqrt(3) - i)", options))).toBe("2");
+      expect(printNode(simplify("abs(i - sqrt(3))", options))).toBe("2");
+
+      expect(printNode(simplify("abs(1 + i)", options))).toBe("2^(1/2)");
     });
 
     it("handles sqrt function with abs function in complex domain", () => {

@@ -1,4 +1,4 @@
-import { ONE, ZERO } from "#lib/constants";
+import { HALF, ONE, ZERO } from "#lib/constants";
 import { negate, normalizeDecimal, tryToFraction } from "#lib/convert";
 import { isEqual } from "#lib/equality";
 import type { DefinedNode, Modulo, TreeNode } from "#lib/nodes";
@@ -96,7 +96,7 @@ export class Evaluator {
         if (args.length !== 1) return simplified;
         if (name === "abs") return this.evaluateAbs(args[0]);
         if (name === "sqrt") {
-          return this.power(args[0], new Fraction(1n, 2n));
+          return this.power(args[0], HALF);
         }
         if (name === "floor" || name === "ceil") {
           return this.evaluateFloorCeil(args[0], name);
@@ -243,6 +243,39 @@ export class Evaluator {
           this.evaluateAbs(coeff),
           this.evaluateAbs(this.multiplyAll(nonUnitFactors)),
         );
+      }
+    }
+    if (
+      this.domain.complex &&
+      (node.type === "ADD" || node.type === "SUBTRACT")
+    ) {
+      const real: Term[] = [];
+      const imag: Term[] = [];
+
+      for (const term of extractTerms(node)) {
+        const { factors } = extractFactors(term.body);
+        const nonIFactors = factors.filter((f) => !isI(f));
+        if (nonIFactors.length < factors.length) {
+          imag.push({ coeff: term.coeff, body: this.multiplyAll(nonIFactors) });
+        } else {
+          real.push(term);
+        }
+      }
+
+      if (imag.length > 0) {
+        const re = this.buildSum(real);
+        const im = this.buildSum(imag);
+        if (this.domain.isReal(re) && this.domain.isReal(im)) {
+          return this.power(
+            this.simplify(
+              new Add(
+                new Power(re, new Integer(2n)),
+                new Power(im, new Integer(2n)),
+              ),
+            ),
+            HALF,
+          );
+        }
       }
     }
     return new FunctionCall("abs", [node]);

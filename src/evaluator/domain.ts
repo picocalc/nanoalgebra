@@ -38,7 +38,19 @@ export class Domain {
   public isReal(node: TreeNode): boolean {
     if (!this.complex || isNumerical(node)) return true;
     const domain = this.of(node);
-    return domain === "positive" || domain === "negative" || domain === "real";
+    if (domain === "positive" || domain === "negative" || domain === "real") {
+      return true;
+    }
+    if (node.type === "MULTIPLY") {
+      return this.isReal(node.left) && this.isReal(node.right);
+    }
+    if (node.type === "POWER") {
+      return (
+        (this.isReal(node.left) && this.isInteger(node.right)) ||
+        (this.isPositive(node.left) && this.isReal(node.right))
+      );
+    }
+    return false;
   }
 
   public isPositive(node: TreeNode): boolean {
