@@ -791,11 +791,15 @@ describe("evaluate", () => {
       expect(printNode(simplify("(-pi - 1) / -1"))).toBe("pi + 1");
 
       expect(printNode(simplify("(e + pi) / (e + pi)"))).toBe("1");
+      expect(printNode(simplify("(pi - e) / (-e + pi)"))).toBe("1");
+
       expect(printNode(simplify("(pi + 1) / (pi + 1)"))).toBe("1");
       expect(printNode(simplify("(pi + 1.5) / (pi + 1.5)"))).toBe("1");
       expect(printNode(simplify("(pi + 1/2) / (pi + 1/2)"))).toBe("1");
 
       expect(printNode(simplify("(1 + pi + e) / (pi + e + 1)"))).toBe("1");
+
+      expect(printNode(simplify("2(pi - e) - 2(-e + pi)"))).toBe("0");
 
       expect(printNode(simplify("pi^e * pi^-e"))).toBe("1");
       expect(printNode(simplify("e^pi * e^-pi"))).toBe("1");
@@ -871,6 +875,10 @@ describe("evaluate", () => {
         "1",
       );
     });
+
+    it("handles division with multiplications", () => {
+      expect(printNode(simplify("2^x / 3^x"))).toBe("(2/3)^x");
+    });
   });
 
   describe("functions", () => {
@@ -895,6 +903,15 @@ describe("evaluate", () => {
       expect(printNode(simplify("sqrt(x) / sqrt(x)^-1"))).toBe("(x^(1/2))^2");
 
       expect(printNode(simplify("(1 / sqrt(x)) * sqrt(x)"))).toBe("1");
+
+      expect(printNode(simplify("sqrt(2) + sqrt(8)"))).toBe("3 * 2^(1/2)");
+      expect(printNode(simplify("sqrt(2) + sqrt(8) - 3sqrt(2)"))).toBe("0");
+      expect(printNode(simplify("sqrt(2) * (sqrt(2) + sqrt(8))"))).toBe("6");
+      expect(printNode(simplify("(sqrt(2) + sqrt(8))^2"))).toBe("18");
+
+      expect(printNode(simplify("sqrt(20) + sqrt(45)"))).toBe("5 * 5^(1/2)");
+      expect(printNode(simplify("sqrt(50)"))).toBe("5 * 2^(1/2)");
+      expect(printNode(simplify("sqrt(539)"))).toBe("7 * 11^(1/2)");
     });
 
     it("handles abs function", () => {
@@ -970,6 +987,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("floor(-3/2)"))).toBe("-2");
       expect(printNode(simplify("ceil(-3/2)"))).toBe("-1");
 
+      expect(printNode(simplify("floor(x)"))).toBe("floor(x)");
+      expect(printNode(simplify("ceil(x)"))).toBe("ceil(x)");
+
       expect(printNode(simplify("floor(floor(x))"))).toBe("floor(x)");
       expect(printNode(simplify("ceil(ceil(x))"))).toBe("ceil(x)");
 
@@ -999,6 +1019,12 @@ describe("evaluate", () => {
       expect(printNode(simplify("ceil(x + floor(x))"))).toBe(
         "ceil(x) + floor(x)",
       );
+
+      expect(printNode(simplify("floor(x) + ceil(-x)"))).toBe("0");
+      expect(printNode(simplify("floor(-x) + ceil(x)"))).toBe("0");
+
+      expect(printNode(simplify("floor(2x) + ceil(-2x)"))).toBe("0");
+      expect(printNode(simplify("floor(-2x) + ceil(2x)"))).toBe("0");
     });
 
     it("handles floor and ceil functions with abs function", () => {
@@ -1059,9 +1085,19 @@ describe("evaluate", () => {
       expect(printNode(simplify("(-i)^3", options))).toBe("i");
     });
 
+    it("handles division by i", () => {
+      expect(printNode(simplify("pi / -i", options))).toBe("pi * i");
+      expect(printNode(simplify("-pi / i", options))).toBe("pi * i");
+      expect(printNode(simplify("pi / i", options))).toBe("pi * (-i)");
+      expect(printNode(simplify("-pi / -i", options))).toBe("-(pi * i)");
+      expect(printNode(simplify("pi / 2i", options))).toBe("-1/2 * (pi * i)");
+    });
+
     it("handles exponentiation in complex domain", () => {
-      expect(printNode(simplify("(-z)^2"))).toBe("z^2");
-      expect(printNode(simplify("(-z)^3"))).toBe("-z^3");
+      expect(printNode(simplify("(-z)^2", options))).toBe("z^2");
+      expect(printNode(simplify("(-z)^3", options))).toBe("-z^3");
+
+      expect(printNode(simplify("0^z * 0^-z", options))).not.toBe("1");
     });
 
     it("handles fractional exponents in complex domain", () => {
@@ -1141,7 +1177,16 @@ describe("evaluate", () => {
       expect(printNode(simplify("abs(-i)", options))).toBe("1");
       expect(printNode(simplify("abs(2i)", options))).toBe("2");
       expect(printNode(simplify("abs(-2i)", options))).toBe("2");
-      expect(printNode(simplify("abs(3 + 4i)", options))).not.toBe("7");
+
+      expect(printNode(simplify("abs(3 + 4i)", options))).toBe("5");
+      expect(printNode(simplify("abs(3 - 4i)", options))).toBe("5");
+      expect(printNode(simplify("abs(4i - 3)", options))).toBe("5");
+
+      expect(printNode(simplify("abs(sqrt(3) + i)", options))).toBe("2");
+      expect(printNode(simplify("abs(sqrt(3) - i)", options))).toBe("2");
+      expect(printNode(simplify("abs(i - sqrt(3))", options))).toBe("2");
+
+      expect(printNode(simplify("abs(1 + i)", options))).toBe("2^(1/2)");
     });
 
     it("handles sqrt function with abs function in complex domain", () => {

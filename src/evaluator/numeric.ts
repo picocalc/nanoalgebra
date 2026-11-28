@@ -6,10 +6,15 @@ import {
   toDecimal,
   tryToFraction,
 } from "#lib/convert";
-import type { Decimal, Fraction, NumericalNode } from "#lib/nodes";
+import {
+  Multiply,
+  type Decimal,
+  type Fraction,
+  type NumericalNode,
+} from "#lib/nodes";
 import { FunctionCall, Integer, Power } from "#lib/nodes";
 import { isAbovePowThreshold, tryGetIntegerValue } from "#lib/shared";
-import { iNthRoot } from "#math/iroot";
+import { extractNthRoot } from "#math/iroot";
 import { floorMod, modPow } from "#math/modulo";
 
 export function evaluateNumericFloorCeil(
@@ -215,7 +220,7 @@ function evaluateIntegerPower(
 export function evaluateNumericPower(
   left: NumericalNode,
   right: NumericalNode,
-): NumericalNode | Power | null {
+): NumericalNode | Multiply | Power | null {
   const exp = tryToFraction(right);
   if (!exp) return null;
   if (exp.denominator === 1n) {
@@ -228,15 +233,51 @@ export function evaluateNumericPower(
   const isNegBase = base.numerator < 0n;
   if (isNegBase && exp.denominator % 2n === 0n) return null;
 
-  const absNum = isNegBase ? -base.numerator : base.numerator;
-  const rootNum = iNthRoot(absNum, exp.denominator);
-  if (rootNum === null) return null;
+  const numRoot = extractNthRoot(
+    isNegBase ? -base.numerator : base.numerator,
+    exp.denominator,
+  );
+  const denRoot = extractNthRoot(base.denominator, exp.denominator);
 
-  const rootDen = iNthRoot(base.denominator, exp.denominator);
-  if (rootDen === null) return null;
+  if (numRoot.inside === 1n && denRoot.inside === 1n) {
+    const root = normalizeFraction(
+      isNegBase ? -numRoot.outside : numRoot.outside,
+      denRoot.outside,
+    );
+    return exp.numerator === 1n
+      ? root
+      : evaluateIntegerPower(root, exp.numerator);
+  }
 
-  const root = normalizeFraction(isNegBase ? -rootNum : rootNum, rootDen);
-  return exp.numerator === 1n
-    ? root
-    : evaluateIntegerPower(root, exp.numerator);
+  const wholeExp = exp.numerator / exp.denominator;
+
+  if (numRoot.outside === 1n && denRoot.outside === 1n && wholeExp === 0n) {
+    return null;
+  }
+
+  const extracted = normalizeFraction(
+    isNegBase ? -numRoot.outside : numRoot.outside,
+    denRoot.outside,
+  );
+  const outerFromRoot =
+    extracted.type === "INTEGER" && extracted.value === 1n
+      ? ONE
+      : evaluateIntegerPower(extracted, exp.numerator);
+  if (outerFromRoot.type === "POWER") return null;
+
+  const innerBase = normalizeFraction(numRoot.inside, denRoot.inside);
+  const outerFromWhole =
+    wholeExp === 0n ? ONE : evaluateIntegerPower(innerBase, wholeExp);
+  if (outerFromWhole.type === "POWER") return null;
+
+  const outer = evaluateNumericMultiply(outerFromRoot, outerFromWhole);
+  if (!outer) return null;
+
+  const innerPower = new Power(
+    innerBase,
+    normalizeFraction(exp.numerator % exp.denominator, exp.denominator),
+  );
+  if (outer.type === "INTEGER" && outer.value === 1n) return innerPower;
+
+  return new Multiply(outer, innerPower);
 }

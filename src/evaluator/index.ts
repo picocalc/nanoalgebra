@@ -1,5 +1,6 @@
-import { ONE, ZERO } from "#lib/constants";
+import { HALF, ONE, ZERO } from "#lib/constants";
 import { negate, normalizeDecimal, tryToFraction } from "#lib/convert";
+import { isEqual } from "#lib/equality";
 import type { DefinedNode, Modulo, TreeNode } from "#lib/nodes";
 import {
   Add,
@@ -15,9 +16,9 @@ import {
 } from "#lib/nodes";
 import {
   isAbovePowThreshold,
-  isEqual,
   isEvenInteger,
   isEvenRoot,
+  isI,
   isNegativeNumber,
   isNegativeOne,
   isNumerical,
@@ -95,7 +96,7 @@ export class Evaluator {
         if (args.length !== 1) return simplified;
         if (name === "abs") return this.evaluateAbs(args[0]);
         if (name === "sqrt") {
-          return this.power(args[0], new Fraction(1n, 2n));
+          return this.power(args[0], HALF);
         }
         if (name === "floor" || name === "ceil") {
           return this.evaluateFloorCeil(args[0], name);
@@ -230,14 +231,12 @@ export class Evaluator {
 
   private evaluateAbs(node: TreeNode): TreeNode {
     if (isNumerical(node)) return isNegativeNumber(node) ? negate(node) : node;
-    if (node.type === "SYMBOL" && node.name === "i") return ONE;
+    if (isI(node)) return ONE;
     if (this.domain.isPositive(node)) return node;
     if (this.domain.isNegative(node)) return this.simplify(negate(node));
     if (node.type === "MULTIPLY") {
       const { coeff, factors } = extractFactors(node);
-      const nonUnitFactors = factors.filter(
-        (f) => !(f.type === "SYMBOL" && f.name === "i"),
-      );
+      const nonUnitFactors = factors.filter((f) => !isI(f));
       if (!isOne(coeff) || nonUnitFactors.length < factors.length) {
         if (nonUnitFactors.length === 0) return this.evaluateAbs(coeff);
         return this.multiply(
@@ -246,12 +245,54 @@ export class Evaluator {
         );
       }
     }
+    if (
+      this.domain.complex &&
+      (node.type === "ADD" || node.type === "SUBTRACT")
+    ) {
+      const real: Term[] = [];
+      const imag: Term[] = [];
+
+      for (const term of extractTerms(node)) {
+        const { factors } = extractFactors(term.body);
+        const nonIFactors = factors.filter((f) => !isI(f));
+        if (nonIFactors.length < factors.length) {
+          imag.push({ coeff: term.coeff, body: this.multiplyAll(nonIFactors) });
+        } else {
+          real.push(term);
+        }
+      }
+
+      if (imag.length > 0) {
+        const re = this.buildSum(real);
+        const im = this.buildSum(imag);
+        if (this.domain.isReal(re) && this.domain.isReal(im)) {
+          return this.power(
+            this.simplify(
+              new Add(
+                new Power(re, new Integer(2n)),
+                new Power(im, new Integer(2n)),
+              ),
+            ),
+            HALF,
+          );
+        }
+      }
+    }
     return new FunctionCall("abs", [node]);
   }
 
   private evaluateFloorCeil(node: TreeNode, op: "floor" | "ceil"): TreeNode {
     if (this.domain.isInteger(node)) return node;
     if (isNumerical(node)) return evaluateNumericFloorCeil(node, op);
+    if (node.type === "MULTIPLY" && isNegativeNumber(node.left)) {
+      return this.simplify(
+        negate(
+          new FunctionCall(op === "floor" ? "ceil" : "floor", [
+            this.multiply(negate(node.left), node.right),
+          ]),
+        ),
+      );
+    }
     if (node.type === "ADD" || node.type === "SUBTRACT") {
       const terms = extractTerms(node);
       const nonIntTerms: Term[] = [];
@@ -522,6 +563,18 @@ export class Evaluator {
     const num = extractFactors(left);
     const den = extractFactors(right);
 
+    const iFactor = den.factors.find((f) => {
+      const { base, exp } = getBaseAndExp(f);
+      return isI(base) && tryGetIntegerValue(exp) !== null;
+    });
+    if (iFactor) {
+      const { base, exp } = getBaseAndExp(iFactor);
+      const invI = this.power(base, this.simplify(negate(exp)));
+      const restDen = den.factors.filter((f) => f !== iFactor);
+      const newDen = this.multiply(den.coeff, this.multiplyAll(restDen));
+      return this.simplify(new Divide(this.multiply(left, invI), newDen));
+    }
+
     if (num.factors.length === 0) {
       const factor = den.factors.length === 1 ? den.factors[0] : undefined;
       if (!factor) return null;
@@ -560,7 +613,7 @@ export class Evaluator {
     right: DefinedNode,
     expInt: bigint | null,
   ): TreeNode | null {
-    if (left.type === "SYMBOL" && left.name === "i" && expInt !== null) {
+    if (isI(left) && expInt !== null) {
       switch (expInt & 3n) {
         case 0n:
           return ONE;

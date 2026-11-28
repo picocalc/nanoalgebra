@@ -1,11 +1,13 @@
 import { ZERO } from "./constants";
-import type { NumericalNode, TreeNode } from "./nodes";
+import type { DefinedNode, NumericalNode, TreeNode, Undefined } from "./nodes";
 import { Decimal, Fraction, Integer, Multiply } from "./nodes";
 import { isAbovePowThreshold, isNegativeNumber } from "./shared";
 
 export function negate(node: NumericalNode): NumericalNode;
-export function negate(node: TreeNode): TreeNode;
-export function negate(node: TreeNode): TreeNode {
+export function negate(node: DefinedNode): Multiply;
+export function negate(node: Undefined): Undefined;
+export function negate(node: TreeNode): Multiply | Undefined;
+export function negate(node: TreeNode) {
   if (node.type === "UNDEFINED") return node;
   if (node.type === "INTEGER") return new Integer(-node.value);
   if (node.type === "DECIMAL") return new Decimal(-node.whole, node.exponent);
