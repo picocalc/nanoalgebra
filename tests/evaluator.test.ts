@@ -1059,6 +1059,14 @@ describe("evaluate", () => {
       expect(printNode(simplify("(-i)^3", options))).toBe("i");
     });
 
+    it("handles division by i", () => {
+      expect(printNode(simplify("pi / -i", options))).toBe("pi * i");
+      expect(printNode(simplify("-pi / i", options))).toBe("pi * i");
+      expect(printNode(simplify("pi / i", options))).toBe("pi * (-i)");
+      expect(printNode(simplify("-pi / -i", options))).toBe("-(pi * i)");
+      expect(printNode(simplify("pi / 2i", options))).toBe("-1/2 * (pi * i)");
+    });
+
     it("handles exponentiation in complex domain", () => {
       expect(printNode(simplify("(-z)^2"))).toBe("z^2");
       expect(printNode(simplify("(-z)^3"))).toBe("-z^3");

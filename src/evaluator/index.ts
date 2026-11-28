@@ -18,6 +18,7 @@ import {
   isEqual,
   isEvenInteger,
   isEvenRoot,
+  isI,
   isNegativeNumber,
   isNegativeOne,
   isNumerical,
@@ -230,14 +231,12 @@ export class Evaluator {
 
   private evaluateAbs(node: TreeNode): TreeNode {
     if (isNumerical(node)) return isNegativeNumber(node) ? negate(node) : node;
-    if (node.type === "SYMBOL" && node.name === "i") return ONE;
+    if (isI(node)) return ONE;
     if (this.domain.isPositive(node)) return node;
     if (this.domain.isNegative(node)) return this.simplify(negate(node));
     if (node.type === "MULTIPLY") {
       const { coeff, factors } = extractFactors(node);
-      const nonUnitFactors = factors.filter(
-        (f) => !(f.type === "SYMBOL" && f.name === "i"),
-      );
+      const nonUnitFactors = factors.filter((f) => !isI(f));
       if (!isOne(coeff) || nonUnitFactors.length < factors.length) {
         if (nonUnitFactors.length === 0) return this.evaluateAbs(coeff);
         return this.multiply(
@@ -522,6 +521,18 @@ export class Evaluator {
     const num = extractFactors(left);
     const den = extractFactors(right);
 
+    const iFactor = den.factors.find((f) => {
+      const { base, exp } = getBaseAndExp(f);
+      return isI(base) && tryGetIntegerValue(exp) !== null;
+    });
+    if (iFactor) {
+      const { base, exp } = getBaseAndExp(iFactor);
+      const invI = this.power(base, this.simplify(negate(exp)));
+      const restDen = den.factors.filter((f) => f !== iFactor);
+      const newDen = this.multiply(den.coeff, this.multiplyAll(restDen));
+      return this.simplify(new Divide(this.multiply(left, invI), newDen));
+    }
+
     if (num.factors.length === 0) {
       const factor = den.factors.length === 1 ? den.factors[0] : undefined;
       if (!factor) return null;
@@ -560,7 +571,7 @@ export class Evaluator {
     right: DefinedNode,
     expInt: bigint | null,
   ): TreeNode | null {
-    if (left.type === "SYMBOL" && left.name === "i" && expInt !== null) {
+    if (isI(left) && expInt !== null) {
       switch (expInt & 3n) {
         case 0n:
           return ONE;

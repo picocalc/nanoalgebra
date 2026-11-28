@@ -1,6 +1,6 @@
 import { powBitLength } from "bigint.bitlength";
 
-import type { NumericalNode, TreeNode } from "./nodes";
+import type { NumericalNode, SymbolNode, TreeNode } from "./nodes";
 
 export function isNegativeNumber(node: TreeNode): boolean {
   if (node.type === "INTEGER") return node.value < 0n;
@@ -33,6 +33,10 @@ export function isNumerical(node: TreeNode): node is NumericalNode {
     node.type === "DECIMAL" ||
     node.type === "FRACTION"
   );
+}
+
+export function isI(node: TreeNode): node is SymbolNode & { name: "i" } {
+  return node.type === "SYMBOL" && node.name === "i";
 }
 
 export function tryGetIntegerValue(node: TreeNode): bigint | null {
