@@ -983,6 +983,9 @@ describe("evaluate", () => {
       expect(printNode(simplify("floor(-3/2)"))).toBe("-2");
       expect(printNode(simplify("ceil(-3/2)"))).toBe("-1");
 
+      expect(printNode(simplify("floor(x)"))).toBe("floor(x)");
+      expect(printNode(simplify("ceil(x)"))).toBe("ceil(x)");
+
       expect(printNode(simplify("floor(floor(x))"))).toBe("floor(x)");
       expect(printNode(simplify("ceil(ceil(x))"))).toBe("ceil(x)");
 
@@ -1012,6 +1015,12 @@ describe("evaluate", () => {
       expect(printNode(simplify("ceil(x + floor(x))"))).toBe(
         "ceil(x) + floor(x)",
       );
+
+      expect(printNode(simplify("floor(x) + ceil(-x)"))).toBe("0");
+      expect(printNode(simplify("floor(-x) + ceil(x)"))).toBe("0");
+
+      expect(printNode(simplify("floor(2x) + ceil(-2x)"))).toBe("0");
+      expect(printNode(simplify("floor(-2x) + ceil(2x)"))).toBe("0");
     });
 
     it("handles floor and ceil functions with abs function", () => {

@@ -251,6 +251,15 @@ export class Evaluator {
   private evaluateFloorCeil(node: TreeNode, op: "floor" | "ceil"): TreeNode {
     if (this.domain.isInteger(node)) return node;
     if (isNumerical(node)) return evaluateNumericFloorCeil(node, op);
+    if (node.type === "MULTIPLY" && isNegativeNumber(node.left)) {
+      return this.simplify(
+        negate(
+          new FunctionCall(op === "floor" ? "ceil" : "floor", [
+            this.multiply(negate(node.left), node.right),
+          ]),
+        ),
+      );
+    }
     if (node.type === "ADD" || node.type === "SUBTRACT") {
       const terms = extractTerms(node);
       const nonIntTerms: Term[] = [];
