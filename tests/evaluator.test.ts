@@ -791,11 +791,15 @@ describe("evaluate", () => {
       expect(printNode(simplify("(-pi - 1) / -1"))).toBe("pi + 1");
 
       expect(printNode(simplify("(e + pi) / (e + pi)"))).toBe("1");
+      expect(printNode(simplify("(pi - e) / (-e + pi)"))).toBe("1");
+
       expect(printNode(simplify("(pi + 1) / (pi + 1)"))).toBe("1");
       expect(printNode(simplify("(pi + 1.5) / (pi + 1.5)"))).toBe("1");
       expect(printNode(simplify("(pi + 1/2) / (pi + 1/2)"))).toBe("1");
 
       expect(printNode(simplify("(1 + pi + e) / (pi + e + 1)"))).toBe("1");
+
+      expect(printNode(simplify("2(pi - e) - 2(-e + pi)"))).toBe("0");
 
       expect(printNode(simplify("pi^e * pi^-e"))).toBe("1");
       expect(printNode(simplify("e^pi * e^-pi"))).toBe("1");

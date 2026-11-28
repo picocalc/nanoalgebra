@@ -1,5 +1,6 @@
 import { ONE, ZERO } from "#lib/constants";
 import { negate, normalizeDecimal, tryToFraction } from "#lib/convert";
+import { isEqual } from "#lib/equality";
 import type { DefinedNode, Modulo, TreeNode } from "#lib/nodes";
 import {
   Add,
@@ -15,7 +16,6 @@ import {
 } from "#lib/nodes";
 import {
   isAbovePowThreshold,
-  isEqual,
   isEvenInteger,
   isEvenRoot,
   isI,
